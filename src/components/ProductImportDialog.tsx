@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Link, Loader2, CheckCircle2, AlertCircle, Bell } from 'lucide-react';
+import { Plus, Link, Loader2, CheckCircle2, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,11 +13,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useWishlist } from '@/hooks/useWishlist';
-import { useProductMetadata } from '@/hooks/useProductMetadata';
+import { useProductMetadata, type ProductMetadata } from '@/hooks/useProductMetadata';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useBitcoinPrice, formatEur } from '@/hooks/useBitcoinPrice';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { cn } from '@/lib/utils';
 
 interface AddProductDialogProps {
   children?: React.ReactNode;
@@ -29,7 +28,7 @@ export function ProductImportDialog({ children }: AddProductDialogProps) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>('input');
   const [productUrl, setProductUrl] = useState('');
-  const [metadata, setMetadata] = useState<any>(null);
+  const [metadata, setMetadata] = useState<ProductMetadata | null>(null);
   const [targetBtcPrice, setTargetBtcPrice] = useState('');
 
   const { extractMetadata, isLoading } = useProductMetadata();
@@ -39,7 +38,30 @@ export function ProductImportDialog({ children }: AddProductDialogProps) {
   const {
     permission,
     requestPermission,
-    sendNotification,
+    notifyProductAdded,
+  } = useNotifications();
+
+
+interface AddProductDialogProps {
+  children?: React.ReactNode;
+}
+
+type Step = 'input' | 'loading' | 'confirm' | 'notification';
+
+export function ProductImportDialog({ children }: AddProductDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState<Step>('input');
+  const [productUrl, setProductUrl] = useState('');
+  const [metadata, setMetadata] = useState<ProductMetadata | null>(null);
+  const [targetBtcPrice, setTargetBtcPrice] = useState('');
+
+  const { extractMetadata, isLoading } = useProductMetadata();
+  const { addItem, isSaving } = useWishlist();
+  const { data: btcPrice } = useBitcoinPrice();
+  const { user } = useCurrentUser();
+  const {
+    permission,
+    requestPermission,
     notifyProductAdded,
   } = useNotifications();
 
