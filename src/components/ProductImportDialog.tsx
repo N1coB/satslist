@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, Link, Loader2, CheckCircle2, AlertCircle, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
