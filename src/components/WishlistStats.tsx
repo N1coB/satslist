@@ -12,12 +12,12 @@ export function WishlistStats({ wishlist }: WishlistStatsProps) {
 
   const activeItems = wishlist.items.filter((item) => !item.purchased);
   const purchasedItems = wishlist.items.filter((item) => item.purchased);
-  
+
   const totalValue = activeItems.reduce((sum, item) => sum + item.priceEur, 0);
   const totalSats = btcPrice
     ? activeItems.reduce((sum, item) => sum + eurToSats(item.priceEur, btcPrice.eur), 0)
     : 0;
-  
+
   const readyToBuy = btcPrice
     ? activeItems.filter((item) => btcPrice.eur >= item.targetBtcPrice).length
     : 0;

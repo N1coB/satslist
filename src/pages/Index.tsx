@@ -1,5 +1,5 @@
 import { useSeoMeta } from '@unhead/react';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { BitcoinPriceCard } from '@/components/BitcoinPriceCard';
 import { WishlistCard } from '@/components/WishlistCard';
@@ -7,7 +7,6 @@ import { WishlistStats } from '@/components/WishlistStats';
 import { EmptyWishlist } from '@/components/EmptyWishlist';
 import { AddProductDialog } from '@/components/AddProductDialog';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -63,7 +62,7 @@ function NotLoggedIn() {
           <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary/20 to-amber-400/20 flex items-center justify-center mx-auto">
             <AlertCircle className="h-10 w-10 text-primary" />
           </div>
-          
+
           <div className="space-y-2">
             <h3 className="text-2xl font-bold">Willkommen bei SatsList!</h3>
             <p className="text-muted-foreground leading-relaxed">
@@ -71,7 +70,7 @@ function NotLoggedIn() {
               Deine Daten werden dezentral auf Nostr-Relays gespeichert - nur du hast Zugriff.
             </p>
           </div>
-          
+
           <div className="pt-4 flex justify-center">
             <LoginArea className="w-full max-w-xs" />
           </div>
@@ -96,7 +95,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5">
       <Header />
-      
+
       <main className="container mx-auto px-4 py-8 space-y-8">
         {/* Hero Section with Bitcoin Price */}
         <section className="space-y-4">
@@ -113,7 +112,7 @@ const Index = () => {
               <AddProductDialog />
             )}
           </div>
-          
+
           <BitcoinPriceCard />
         </section>
 

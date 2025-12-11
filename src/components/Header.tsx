@@ -1,4 +1,4 @@
-import { Bitcoin, Moon, Sun, Settings } from 'lucide-react';
+import { Bitcoin, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LoginArea } from '@/components/auth/LoginArea';
 import { useTheme } from '@/hooks/useTheme';
