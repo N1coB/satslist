@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { useToast } from '@/hooks/useToast';
 
 export interface ProductMetadata {
@@ -61,12 +62,14 @@ function parseMetadata(html: string, baseUrl: string): ProductMetadata | null {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
-    // Extract title
-    const title =
+    // Extract title and sanitize
+    const rawTitle =
       doc.querySelector('meta[property="og:title"]')?.getAttribute('content') ||
       doc.querySelector('meta[name="title"]')?.getAttribute('content') ||
       doc.querySelector('h1')?.textContent ||
       'Produkt';
+
+    const title = DOMPurify.sanitize(rawTitle, { ALLOWED_TAGS: [] });
 
     // Extract image
     let imageUrl =
