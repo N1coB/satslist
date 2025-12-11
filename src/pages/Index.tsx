@@ -5,7 +5,7 @@ import { BitcoinPriceCard } from '@/components/BitcoinPriceCard';
 import { WishlistCard } from '@/components/WishlistCard';
 import { WishlistStats } from '@/components/WishlistStats';
 import { EmptyWishlist } from '@/components/EmptyWishlist';
-import { AddProductDialog } from '@/components/AddProductDialog';
+import { ProductImportDialog } from '@/components/ProductImportDialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWishlist } from '@/hooks/useWishlist';
@@ -108,9 +108,6 @@ const Index = () => {
                 HODL und kaufe, wenn dein Zielpreis erreicht ist 🚀
               </p>
             </div>
-            {user && wishlist.items.length > 0 && (
-              <AddProductDialog />
-            )}
           </div>
 
           <BitcoinPriceCard />
@@ -132,7 +129,14 @@ const Index = () => {
             </CardContent>
           </Card>
         ) : wishlist.items.length === 0 ? (
-          <EmptyWishlist />
+          <div className="space-y-6">
+            <EmptyWishlist />
+            {user && (
+              <div className="flex justify-center">
+                <ProductImportDialog />
+              </div>
+            )}
+          </div>
         ) : (
           <div className="space-y-8">
             {/* Stats */}
@@ -141,9 +145,12 @@ const Index = () => {
             {/* Active Items */}
             {activeItems.length > 0 && (
               <section className="space-y-4">
-                <h3 className="text-lg font-semibold text-muted-foreground">
-                  Aktive Wünsche ({activeItems.length})
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-muted-foreground">
+                    Aktive Wünsche ({activeItems.length})
+                  </h3>
+                  <ProductImportDialog />
+                </div>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {activeItems.map((item) => (
                     <WishlistCard key={item.id} item={item} />

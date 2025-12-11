@@ -49,12 +49,12 @@ export function WishlistCard({ item }: WishlistCardProps) {
   const currentBtcPrice = btcPrice?.eur || 0;
   const currentSats = currentBtcPrice > 0 ? eurToSats(item.priceEur, currentBtcPrice) : 0;
   const targetSats = eurToSats(item.priceEur, item.targetBtcPrice);
-  
+
   // Progress to target price
   const priceProgress = currentBtcPrice > 0
     ? Math.min((currentBtcPrice / item.targetBtcPrice) * 100, 100)
     : 0;
-  
+
   const isTargetReached = currentBtcPrice >= item.targetBtcPrice;
   const savingsPercent = currentSats > 0 && targetSats < currentSats
     ? ((currentSats - targetSats) / currentSats) * 100
@@ -109,7 +109,7 @@ export function WishlistCard({ item }: WishlistCardProps) {
             </div>
           </div>
         </CardContent>
-        
+
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -143,7 +143,7 @@ export function WishlistCard({ item }: WishlistCardProps) {
             Zielpreis erreicht! Zeit zu kaufen! 🎉
           </div>
         )}
-        
+
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2 flex-wrap">
@@ -165,7 +165,7 @@ export function WishlistCard({ item }: WishlistCardProps) {
                 </Badge>
               )}
             </div>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -205,7 +205,7 @@ export function WishlistCard({ item }: WishlistCardProps) {
             </DropdownMenu>
           </div>
         </CardHeader>
-        
+
         <CardContent className="space-y-4">
           <div className="flex gap-4">
             {item.imageUrl ? (
@@ -221,7 +221,7 @@ export function WishlistCard({ item }: WishlistCardProps) {
                 <ShoppingCart className="h-8 w-8 text-primary/40" />
               </div>
             )}
-            
+
             <div className="min-w-0 flex-1">
               <h3 className="font-semibold text-lg leading-tight mb-1">{item.name}</h3>
               {item.notes && (
@@ -229,21 +229,21 @@ export function WishlistCard({ item }: WishlistCardProps) {
               )}
             </div>
           </div>
-          
+
           {/* Price comparison */}
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg bg-muted/50 p-3">
               <p className="text-xs text-muted-foreground mb-1">Aktueller Preis</p>
-              <p className="font-bold text-lg">{formatEur(item.priceEur)}</p>
-              <p className="text-xs text-muted-foreground">{formatSats(currentSats)}</p>
+              <p className="font-bold text-2xl">{formatEur(item.priceEur)}</p>
+              <p className="text-sm text-muted-foreground">{formatSats(currentSats)}</p>
             </div>
             <div className="rounded-lg bg-primary/10 p-3">
               <p className="text-xs text-muted-foreground mb-1">Bei Zielpreis</p>
-              <p className="font-bold text-lg text-primary">{formatSats(targetSats)}</p>
-              <p className="text-xs text-muted-foreground">{formatEur(item.priceEur)}</p>
+              <p className="font-bold text-2xl text-primary">{formatEur(item.priceEur)}</p>
+              <p className="text-sm text-primary">{formatSats(targetSats)}</p>
             </div>
           </div>
-          
+
           {/* Progress bar */}
           <div className="space-y-2">
             <div className="flex justify-between text-xs text-muted-foreground">
@@ -270,7 +270,7 @@ export function WishlistCard({ item }: WishlistCardProps) {
               </span>
             </div>
           </div>
-          
+
           {/* Action button for target reached */}
           {isTargetReached && item.url && (
             <Button asChild className="w-full gap-2">
@@ -288,7 +288,7 @@ export function WishlistCard({ item }: WishlistCardProps) {
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
       />
-      
+
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
