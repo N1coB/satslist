@@ -40,6 +40,8 @@ const Index = () => {
     rateLimitWarning,
   } = useWishlist({ logRelay });
   const { data: priceData } = useBitcoinPrice();
+
+  // Import Dialog State
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importUrl, setImportUrl] = useState('');
 
