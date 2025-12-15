@@ -6,6 +6,7 @@ import type { NostrEvent } from '@nostrify/nostrify';
 import { WishlistItem, type WishlistPayload } from '@/types/wishlist';
 
 const WISHLIST_KIND = 30078;
+const COMMUNITY_TAG = 'satslist-wishlist';
 const RATE_LIMIT_DELAY = 2000;
 
 let queryQueue: Promise<unknown> = Promise.resolve();
@@ -35,10 +36,12 @@ interface UseWishlistOptions {
 const noOpLog = () => {};
 
 const buildEvent = (pubkey: string, payload: WishlistPayload): UnsignedWishlistEvent => {
+  const itemId = payload.id ?? crypto.randomUUID();
   const tags: [string, string][] = [
-    ['d', 'satslist-wishlist'],
+    ['d', itemId],
+    ['t', COMMUNITY_TAG],
     ['item', JSON.stringify({
-      id: payload.id ?? crypto.randomUUID(),
+      id: itemId,
       title: payload.title,
       link: payload.link ?? null,
       image: payload.image ?? null,
@@ -65,8 +68,10 @@ const parseWishlistEvent = (event: NostrEvent): WishlistItem | null => {
 
   try {
     const payload = JSON.parse(itemTag[1]);
+    const id = payload.id ?? event.id;
+
     return {
-      id: payload.id,
+      id,
       title: payload.title,
       link: payload.link ?? undefined,
       image: payload.image ?? undefined,
@@ -104,7 +109,14 @@ export function useWishlist(options?: UseWishlistOptions) {
         {
           kinds: [WISHLIST_KIND],
           authors: [user.pubkey],
-          '#d': ['satslist-wishlist'],
+          '#t': [COMMUNITY_TAG],
+          limit: 100,
+        },
+        // Rückwärtskompatibilität für alte Events, die alle dieselbe d-Tag verwendeten
+        {
+          kinds: [WISHLIST_KIND],
+          authors: [user.pubkey],
+          '#d': [COMMUNITY_TAG],
           limit: 100,
         },
       ];
@@ -116,11 +128,15 @@ export function useWishlist(options?: UseWishlistOptions) {
         logRelay(`Queried ${events.length} events`);
         setRateLimitWarning(null);
 
-        return events.reduce<WishlistItem[]>((acc, event) => {
+        const map = events.reduce<Map<string, WishlistItem>>((acc, event) => {
           const parsed = parseWishlistEvent(event);
-          if (parsed) acc.push(parsed);
+          if (parsed) {
+            acc.set(parsed.id, parsed);
+          }
           return acc;
-        }, []);
+        }, new Map());
+
+        return Array.from(map.values()).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         logRelay(`Query failed: ${message}`);
