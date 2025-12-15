@@ -112,13 +112,6 @@ export function useWishlist(options?: UseWishlistOptions) {
           '#t': [COMMUNITY_TAG],
           limit: 100,
         },
-        // Rückwärtskompatibilität für alte Events, die alle dieselbe d-Tag verwendeten
-        {
-          kinds: [WISHLIST_KIND],
-          authors: [user.pubkey],
-          '#d': [COMMUNITY_TAG],
-          limit: 100,
-        },
       ];
 
       logRelay(`REQ filters: ${JSON.stringify(filters)}`);
