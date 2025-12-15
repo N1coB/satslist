@@ -8,6 +8,7 @@ import { useWishlist } from '@/hooks/useWishlist';
 import { useBitcoinPrice } from '@/hooks/useBitcoinPrice';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -29,9 +30,18 @@ const Index = () => {
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importUrl, setImportUrl] = useState('');
 
   const handleSave = async (payload: WishlistPayload) => {
     await addItem(payload);
+    setImportUrl('');
+  };
+
+  const openImportDialog = (prefillUrl?: string) => {
+    if (prefillUrl) {
+      setImportUrl(prefillUrl);
+    }
+    setImportDialogOpen(true);
   };
 
   // Logged-out state
@@ -94,14 +104,25 @@ const Index = () => {
         <WishlistStats count={stats.count} readyCount={stats.readyCount} totalTarget={stats.totalTarget} />
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
+        <div className="flex flex-col gap-3">
+          <Button onClick={() => setImportDialogOpen(true)} className="gap-2 bg-white/5 text-white hover:bg-white/10">
             <Plus className="w-4 h-4" />
-            Neues Ziel
+            Produkt hinzufügen
           </Button>
-          <Button onClick={() => setImportDialogOpen(true)} variant="outline" className="gap-2">
-            <Import className="w-4 h-4" />
-            Produkt importieren
+          <Input
+            placeholder="Produkt-URL"
+            className="bg-white/10 text-white placeholder:text-white/60"
+            value={importUrl}
+            onChange={(event) => setImportUrl(event.target.value)}
+            onKeyDown={(event) => event.key === 'Enter' && openImportDialog(importUrl)}
+            onFocus={() => openImportDialog(importUrl)}
+          />
+          <Button
+            variant="outline"
+            className="gap-2 text-white border-white/40 hover:border-white/60 hover:text-white"
+            onClick={() => openImportDialog(importUrl)}
+          >
+            Importieren
           </Button>
         </div>
 

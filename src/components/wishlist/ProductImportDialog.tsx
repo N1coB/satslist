@@ -15,6 +15,8 @@ interface ProductImportDialogProps {
   onOpenChange: (open: boolean) => void;
   onSave: (payload: WishlistPayload) => Promise<void>;
   priceData?: BitcoinPriceData;
+  /** Optional URL to prefill when the dialog opens */
+  initialUrl?: string;
 }
 
 export function ProductImportDialog({
@@ -22,13 +24,14 @@ export function ProductImportDialog({
   onOpenChange,
   onSave,
   priceData,
+  initialUrl,
 }: ProductImportDialogProps) {
   const [url, setUrl] = useState('');
   const [submittedUrl, setSubmittedUrl] = useState('');
   const [title, setTitle] = useState('');
   const [image, setImage] = useState<string | undefined>(undefined);
   const [notes, setNotes] = useState('');
-  const [targetPrice, setTargetPrice] = useState<number>(0);
+  const [targetEuro, setTargetEuro] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -44,30 +47,31 @@ export function ProductImportDialog({
       setImage(metadata.image);
     }
 
-    const priceEUR = metadata.priceEUR;
-    if (typeof priceEUR === 'number' && priceData) {
-      setTargetPrice((prev) =>
-        prev > 0 ? prev : Math.round(priceData.euroToSats(priceEUR))
-      );
+    if (typeof metadata.priceEUR === 'number' && !targetEuro) {
+      setTargetEuro(metadata.priceEUR.toFixed(2));
     }
-  }, [metadata, priceData]);
+  }, [metadata, targetEuro]);
+
+  useEffect(() => {
+    if (!initialUrl) return;
+    setUrl(initialUrl);
+    setSubmittedUrl(initialUrl);
+  }, [initialUrl]);
 
   const recommendedPriceEUR = metadata?.priceEUR;
 
-  const targetEuro = useMemo(() => {
-    const normalizedTarget = targetPrice ?? 0;
-    if (normalizedTarget <= 0 || !priceData) {
-      return undefined;
-    }
+  const targetEuroValue = targetEuro ? Number(targetEuro.replace(',', '.')) : undefined;
 
-    return priceData.satsToEuro(normalizedTarget);
-  }, [priceData, targetPrice]);
+  const targetSats = useMemo(() => {
+    if (!priceData || !targetEuroValue || targetEuroValue <= 0) return undefined;
+    return Math.round(priceData.euroToSats(targetEuroValue));
+  }, [priceData, targetEuroValue]);
 
-  const canSave = Boolean(title && targetPrice > 0);
+  const canSave = Boolean(title && targetEuroValue && targetSats);
 
   const handleSubmit = async () => {
-    if (!canSave) {
-      setErrorMessage('Bitte Titel und Zielpreis definieren.');
+    if (!canSave || !targetEuroValue || !targetSats) {
+      setErrorMessage('Bitte Zielpreis in EUR angeben.');
       return;
     }
 
@@ -77,11 +81,11 @@ export function ProductImportDialog({
     try {
       await onSave({
         title: title.trim(),
-        link: submittedUrl,
+        link: submittedUrl || url,
         image,
         notes: notes.trim() || undefined,
-        targetPriceSats: targetPrice,
-        targetPriceEUR: targetEuro,
+        targetPriceSats: targetSats,
+        targetPriceEUR: targetEuroValue,
         source: metadata?.source,
       });
 
@@ -90,7 +94,7 @@ export function ProductImportDialog({
       setTitle('');
       setImage(undefined);
       setNotes('');
-      setTargetPrice(0);
+      setTargetEuro('');
       onOpenChange(false);
     } catch (error) {
       console.error(error);
@@ -114,78 +118,80 @@ export function ProductImportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(90vw,520px)] bg-[#0c0c11] border border-white/10">
+      <DialogContent className="w-[min(90vw,520px)] bg-[#0c0c11] border border-white/10 shadow-2xl shadow-orange-500/40">
         <DialogHeader>
           <DialogTitle className="text-white">Produkt importieren</DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
-            Mit Nostr & SatsList verwaltest du deine Wunschliste direkt auf deiner eigenen Identität. Jede Speicherung erzeugt ein sicheres Kind-30078-Event.
+          <DialogDescription className="text-sm text-white/70">
+            Links einfügen, Zielpreis in EUR setzen und SatsList erstellt dir ein sicheres Nostr-Event.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 text-sm text-white/90">
-          <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
             <Input
               placeholder="Produkt-URL"
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && handleLoad()}
-              className="bg-[#151521] text-white"
+              className="bg-white/10 text-white placeholder:text-white/60"
             />
-            <Button variant="outline" onClick={handleLoad} size="sm">
+            <Button variant="outline" onClick={handleLoad} size="sm" className="px-4">
               <Link2 className="h-4 w-4" />
-              <span>Metadaten laden</span>
+              Metadaten laden
             </Button>
-            <p className="text-xs uppercase tracking-[0.4em] text-white/50">{statusLabel}</p>
           </div>
+          <p className="text-xs uppercase tracking-[0.4em] text-white/50">{statusLabel}</p>
           {metadata && (
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-inner">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] uppercase tracking-[0.45em] text-orange-200">Preview</span>
-                <Badge variant="outline" className="text-[10px]">
+                <div>
+                  <p className="font-semibold text-white">{metadata.title}</p>
+                  <a
+                    href={submittedUrl || url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-orange-300 hover:text-orange-200"
+                  >
+                    {submittedUrl || url}
+                  </a>
+                </div>
+                <Badge variant="outline" className="text-[10px] text-white/80">
                   <Sparkles className="h-3 w-3" />
                   {metadata.source}
                 </Badge>
               </div>
-              <div className="mt-3 grid gap-3">
-                <p className="font-semibold text-white">{metadata.title}</p>
-                {metadata.description && (
-                  <p className="text-xs text-white/70">{metadata.description}</p>
-                )}
-                {metadata.image && (
-                  <img src={metadata.image} alt={metadata.title} className="h-32 w-full rounded-2xl object-cover" loading="lazy" />
-                )}
-                {typeof recommendedPriceEUR === 'number' && (
-                  <p className="text-xs uppercase text-white/60">{formatEuros(recommendedPriceEUR)} (empfohlen)</p>
-                )}
-              </div>
+              {metadata.image && (
+                <img src={metadata.image} alt={metadata.title} className="mt-3 h-32 w-full rounded-2xl object-cover" loading="lazy" />
+              )}
+              {metadata.description && (
+                <p className="mt-3 text-xs text-white/70">{metadata.description}</p>
+              )}
+              <p className="mt-2 text-[11px] text-white/60">
+                Empfohlener Zielpreis: {recommendedPriceEUR ? formatEuros(recommendedPriceEUR) : '–'}
+              </p>
             </div>
           )}
-          <div className="grid gap-3">
+          <div className="space-y-2">
+            <label className="text-xs uppercase tracking-[0.3em] text-white/60">Zielpreis (EUR)</label>
             <Input
-              placeholder="Produktname (optional überschreiben)"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              className="bg-[#151521] text-white"
+              type="number"
+              min={0}
+              placeholder="Ziele den Preis in Euro"
+              value={targetEuro}
+              onChange={(event) => setTargetEuro(event.target.value)}
+              className="bg-white/10 text-white placeholder:text-white/60"
             />
-            <div className="grid gap-3">
-              <Input
-                type="number"
-                min={0}
-                placeholder="Zielpreis in Sats"
-                value={targetPrice === 0 ? '' : targetPrice}
-                onChange={(event) => setTargetPrice(Number(event.target.value))}
-                className="bg-[#151521] text-white"
-              />
-              {targetEuro !== undefined && (
-                <p className="text-[11px] text-white/60">≈ {formatEuros(targetEuro)}</p>
-              )}
-            </div>
-            <Textarea
-              placeholder="Notizen & Wunschdatum"
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              className="bg-[#151521] text-white"
-            />
+            {targetSats && (
+              <p className="text-[11px] text-white/60">
+                ≈ {targetSats.toLocaleString('de-DE')} sats
+              </p>
+            )}
           </div>
+          <Textarea
+            placeholder="Notizen, Wunschdatum oder Sonderwünsche"
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            className="bg-white/10 text-white placeholder:text-white/60"
+          />
           {errorMessage && (
             <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-xs text-destructive">
               {errorMessage}
@@ -193,11 +199,11 @@ export function ProductImportDialog({
           )}
         </div>
         <DialogFooter>
-          <Button onClick={() => onOpenChange(false)} variant="ghost" size="sm">
+          <Button onClick={() => onOpenChange(false)} variant="ghost" size="sm" className="text-white">
             Abbrechen
           </Button>
-          <Button onClick={handleSubmit} disabled={!canSave || isSaving} size="sm">
-            {isSaving ? 'Speichere...' : 'In Wishlist speichern'}
+          <Button onClick={handleSubmit} disabled={!canSave || isSaving} size="sm" className="text-white">
+            {isSaving ? 'Speichere...' : 'Importieren'}
           </Button>
         </DialogFooter>
       </DialogContent>
