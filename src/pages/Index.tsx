@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSeoMeta } from '@unhead/react';
-import { Plus, Zap } from 'lucide-react';
+import { Plus, Settings2, Zap } from 'lucide-react';
 
 import { LoginArea } from '@/components/auth/LoginArea';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useWishlist } from '@/hooks/useWishlist';
 import { useBitcoinPrice } from '@/hooks/useBitcoinPrice';
+import { useAppContext } from '@/hooks/useAppContext';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ import { WishlistCard } from '@/components/wishlist/WishlistCard';
 import { WishlistStats } from '@/components/wishlist/WishlistStats';
 import { AddProductDialog } from '@/components/wishlist/AddProductDialog';
 import { ProductImportDialog } from '@/components/wishlist/ProductImportDialog';
+import { NostrSettingsDialog } from '@/components/NostrSettingsDialog';
 import type { WishlistPayload } from '@/types/wishlist';
 
 const Index = () => {
@@ -27,10 +29,12 @@ const Index = () => {
   const { user } = useCurrentUser();
   const { wishlist, stats, addItem, isLoading } = useWishlist();
   const { data: priceData } = useBitcoinPrice();
+  const { config } = useAppContext();
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importUrl, setImportUrl] = useState('');
+  const [nostrSettingsOpen, setNostrSettingsOpen] = useState(false);
 
   const handleSave = async (payload: WishlistPayload) => {
     await addItem(payload);
@@ -38,11 +42,20 @@ const Index = () => {
   };
 
   const openImportDialog = (prefillUrl?: string) => {
-    if (prefillUrl) {
-      setImportUrl(prefillUrl);
-    }
+    if (prefillUrl) setImportUrl(prefillUrl);
     setImportDialogOpen(true);
   };
+
+  const debugEvents = useMemo(
+    () => wishlist.map((item) => ({
+      id: item.id,
+      title: item.title,
+      sats: item.targetPriceSats,
+    })),
+    [wishlist]
+  );
+
+  const relayList = config.relayMetadata.relays;
 
   // Logged-out state
   if (!user) {
@@ -82,10 +95,8 @@ const Index = () => {
     );
   }
 
-  // Logged-in state
   return (
     <div className="min-h-screen">
-      {/* Header */}
       <header className="sticky top-0 z-40 border-b border-white/10 bg-black/60 backdrop-blur-xl">
         <div className="container mx-auto flex items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
@@ -94,18 +105,21 @@ const Index = () => {
             </div>
             <span className="text-xl font-bold text-white tracking-tight">SatsList</span>
           </div>
-          <LoginArea className="max-w-60" />
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" className="gap-2 text-white border border-white/20" onClick={() => setNostrSettingsOpen(true)}>
+              <Settings2 className="w-4 h-4" />
+              Nostr Settings
+            </Button>
+            <LoginArea className="max-w-60" />
+          </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container mx-auto px-4 py-8 space-y-8">
-        {/* Stats */}
         <WishlistStats count={stats.count} readyCount={stats.readyCount} totalTarget={stats.totalTarget} />
 
-        {/* Action Buttons */}
         <div className="flex flex-col gap-3">
-          <Button onClick={() => setImportDialogOpen(true)} className="gap-2 bg-white/5 text-white hover:bg-white/10">
+          <Button onClick={() => openImportDialog(importUrl)} className="gap-2 bg-white/5 text-white hover:bg-white/10">
             <Plus className="w-4 h-4" />
             Produkt hinzufügen
           </Button>
@@ -126,7 +140,6 @@ const Index = () => {
           </Button>
         </div>
 
-        {/* Wishlist Grid */}
         {isLoading ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
@@ -168,7 +181,32 @@ const Index = () => {
           </div>
         )}
 
-        {/* Footer */}
+        <div className="rounded-2xl border border-white/20 bg-black/40 p-4 text-white/80 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs uppercase tracking-[0.4em] text-white/60">Debug Info</p>
+            <span className="text-[11px] text-white/60">{wishlist.length} Events</span>
+          </div>
+          <p className="text-[11px] text-white/80">
+            Die Liste zeigt die rohen Kind-30078-Events. Falls kein Event angezeigt wird, überprüfe, ob dein Relay-Set gelesen werden kann und ob deine Wallet (z. B. Alby) Lese-/Schreibrechte erteilt hat.
+          </p>
+          <pre className="max-h-36 overflow-auto rounded-xl border border-white/10 bg-white/5 p-2 text-[11px] leading-relaxed text-white">
+            {JSON.stringify(debugEvents, null, 2)}
+          </pre>
+          <div className="text-[11px] text-white/80">
+            <p className="mb-1 text-white/60">Relays & Rechte</p>
+            <ul className="space-y-1">
+              {relayList.map((relay) => (
+                <li key={relay.url} className="flex items-center justify-between text-[11px]">
+                  <span className="truncate">{relay.url}</span>
+                  <span className="text-white/60">
+                    {relay.read ? 'R' : '-'} / {relay.write ? 'W' : '-'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
         <footer className="pt-8 text-center text-xs text-white/40">
           Vibed with{' '}
           <a href="https://shakespeare.diy" target="_blank" rel="noreferrer" className="underline hover:text-white/60">
@@ -177,7 +215,6 @@ const Index = () => {
         </footer>
       </main>
 
-      {/* Dialogs */}
       <AddProductDialog
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
@@ -189,7 +226,9 @@ const Index = () => {
         onOpenChange={setImportDialogOpen}
         onSave={handleSave}
         priceData={priceData}
+        initialUrl={importUrl}
       />
+      <NostrSettingsDialog open={nostrSettingsOpen} onOpenChange={setNostrSettingsOpen} />
     </div>
   );
 };
