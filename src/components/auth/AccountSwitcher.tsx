@@ -1,7 +1,7 @@
 // NOTE: This file is stable and usually should not be modified.
 // It is important that all functionality in this file is preserved, and should only be modified if explicitly requested.
 
-import { ChevronDown, LogOut, UserIcon, UserPlus, Wallet } from 'lucide-react';
+import { ChevronDown, LogOut, Settings2, UserIcon, UserPlus, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import {
   DropdownMenu,
