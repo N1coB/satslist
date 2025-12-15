@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Borrowed, Link2, Sparkles } from 'lucide-react';
+import { Link2, Sparkles } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { WishlistPayload } from '@/types/wishlist';
 import { useProductMetadata } from '@/hooks/useProductMetadata';
 import type { BitcoinPriceData } from '@/hooks/useBitcoinPrice';
-import { formatEuros, formatSats } from '@/lib/format';
+import { formatEuros } from '@/lib/format';
 
 interface ProductImportDialogProps {
   open: boolean;
@@ -36,17 +37,22 @@ export function ProductImportDialog({
 
   useEffect(() => {
     if (!metadata) return;
+
     setTitle((previous) => previous || metadata.title);
+
     if (metadata.image) {
       setImage(metadata.image);
     }
+
     if (metadata.priceEUR && priceData) {
       setTargetPrice((prev) => (prev > 0 ? prev : Math.round(priceData.euroToSats(metadata.priceEUR))));
     }
   }, [metadata, priceData]);
 
+  const recommendedPriceEUR = metadata?.priceEUR;
+
   const targetEuro = useMemo(() => {
-    if (!targetPrice || !priceData) return undefined;
+    if (targetPrice <= 0 || !priceData) return undefined;
     return priceData.satsToEuro(targetPrice);
   }, [targetPrice, priceData]);
 
@@ -140,8 +146,8 @@ export function ProductImportDialog({
                 {metadata.image && (
                   <img src={metadata.image} alt={metadata.title} className="h-32 w-full rounded-2xl object-cover" loading="lazy" />
                 )}
-                {metadata.priceEUR && (
-                  <p className="text-xs uppercase text-white/60">{formatEuros(metadata.priceEUR)} (empfohlen)</p>
+                {typeof recommendedPriceEUR === 'number' && (
+                  <p className="text-xs uppercase text-white/60">{formatEuros(recommendedPriceEUR)} (empfohlen)</p>
                 )}
               </div>
             </div>
@@ -153,8 +159,7 @@ export function ProductImportDialog({
               onChange={(event) => setTitle(event.target.value)}
               className="bg-[#151521] text-white"
             />
-            <div className="grid gap-1 text-white/80">
-              <label className="text-xs uppercase tracking-[0.3em] text-white/50">Zielpreis (Sats)</label>
+            <div className="grid gap-3">
               <Input
                 type="number"
                 min={0}
@@ -163,7 +168,7 @@ export function ProductImportDialog({
                 onChange={(event) => setTargetPrice(Number(event.target.value))}
                 className="bg-[#151521] text-white"
               />
-              {targetEuro && (
+              {targetEuro !== undefined && (
                 <p className="text-[11px] text-white/60">≈ {formatEuros(targetEuro)}</p>
               )}
             </div>
