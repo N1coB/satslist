@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useSeoMeta } from '@unhead/react';
-import { Plus, SlidersHorizontal, Zap } from 'lucide-react';
+import { Plus, SlidersHorizontal, Zap, RefreshCcw } from 'lucide-react';
 
 import { LoginArea } from '@/components/auth/LoginArea';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
