@@ -1,5 +1,5 @@
 import { useNostr } from '@nostrify/react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useCurrentUser } from './useCurrentUser';
 import type { NostrEvent } from '@nostrify/nostrify';
@@ -95,6 +95,7 @@ export function useWishlist(options?: UseWishlistOptions) {
   const logRelay = options?.logRelay ?? noOpLog;
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
+  const queryClient = useQueryClient();
   const [lastPublishError, setLastPublishError] = useState<string | null>(null);
   const [lastPublishSuccess, setLastPublishSuccess] = useState<number | null>(null);
   const [rateLimitWarning, setRateLimitWarning] = useState<string | null>(null);
@@ -183,16 +184,37 @@ export function useWishlist(options?: UseWishlistOptions) {
 
       const signed = await user.signer.signEvent(deleteEvent as NostrEvent);
       await nostr.event(signed, { signal: AbortSignal.timeout(5000) });
-      return signed;
+      return { itemId, event: signed };
+    },
+    onMutate: async (itemId: string) => {
+      // Cancel outgoing refetches to avoid race conditions
+      await queryClient.cancelQueries({ queryKey: ['wishlist', user?.pubkey] });
+
+      // Snapshot the previous value
+      const previousWishlist = queryClient.getQueryData<WishlistItem[]>(['wishlist', user?.pubkey]);
+
+      // Optimistically remove the item
+      if (previousWishlist) {
+        const updated = previousWishlist.filter(item => item.id !== itemId);
+        queryClient.setQueryData(['wishlist', user?.pubkey], updated);
+      }
+
+      return { previousWishlist };
     },
     onSuccess: () => {
       logRelay('Delete succeeded');
-      queryResult.refetch();
+      // Refetch to ensure consistency with relays
+      setTimeout(() => queryResult.refetch(), 1000);
     },
-    onError: (error) => {
+    onError: (error, _itemId, context) => {
       console.error('Wishlist delete failed', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       logRelay(`Delete failed: ${message}`);
+
+      // Rollback on error
+      if (context?.previousWishlist) {
+        queryClient.setQueryData(['wishlist', user?.pubkey], context.previousWishlist);
+      }
     },
   });
 
