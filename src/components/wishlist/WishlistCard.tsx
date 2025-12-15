@@ -18,21 +18,25 @@ interface WishlistCardProps {
 export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps) {
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  // Calculate current BTC price in sats if we have live price data
-  const currentPriceSats = bitcoinPrice && item.targetPriceEUR
-    ? bitcoinPrice.euroToSats(item.targetPriceEUR)
-    : item.currentPriceSats;
+  // Aktueller Preis vom Shop (fest gespeichert)
+  const currentPriceEUR = item.sourcePriceEUR;
+  const currentPriceSats = bitcoinPrice && currentPriceEUR
+    ? bitcoinPrice.euroToSats(currentPriceEUR)
+    : undefined;
 
-  // Progress: 0% = target price, 100% = saved enough (inverted logic for "saving up")
-  // We're tracking if BTC price went UP (making target cheaper in sats)
-  const progress = currentPriceSats && item.targetPriceSats > 0
-    ? Math.max(0, Math.min(100, ((item.targetPriceSats - currentPriceSats) / item.targetPriceSats) * 100))
+  // Zielpreis (mit Rabatt)
+  const targetPriceEUR = item.targetPriceEUR;
+  const targetPriceSats = item.targetPriceSats;
+
+  // Fortschritt: Wie viel Rabatt wurde erreicht?
+  // 0% = Aktueller Preis, 100% = Zielpreis erreicht
+  const progress = currentPriceEUR && targetPriceEUR && currentPriceEUR > 0
+    ? Math.max(0, Math.min(100, ((currentPriceEUR - targetPriceEUR) / currentPriceEUR) * 100))
     : 0;
 
-  const isReady = currentPriceSats ? currentPriceSats <= item.targetPriceSats : false;
-  const targetInEuro = item.targetPriceEUR ?? (bitcoinPrice?.satsToEuro
-    ? bitcoinPrice.satsToEuro(item.targetPriceSats)
-    : undefined);
+  const isReady = currentPriceSats && targetPriceSats
+    ? currentPriceSats <= targetPriceSats
+    : false;
 
   return (
     <>
@@ -87,12 +91,18 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
           )}
           <div className="space-y-2 flex-1">
             <div>
+              <p className="text-xs text-white/60">Zielpreis</p>
               <p className="text-2xl font-bold text-white">
-                {targetInEuro !== undefined ? formatEuros(targetInEuro) : '—'}
+                {targetPriceEUR !== undefined ? formatEuros(targetPriceEUR) : '—'}
               </p>
               <p className="text-xs text-white/50">
-                {formatSats(item.targetPriceSats)} sats
+                {formatSats(targetPriceSats)} sats
               </p>
+              {currentPriceEUR && currentPriceEUR !== targetPriceEUR && (
+                <p className="text-xs text-white/40 mt-1">
+                  Aktuell: {formatEuros(currentPriceEUR)}
+                </p>
+              )}
             </div>
             {item.source && (
               <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-orange-300/80">
@@ -102,16 +112,17 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
             )}
           </div>
         </div>
-        {currentPriceSats && (
+        {currentPriceEUR && targetPriceEUR && currentPriceEUR !== targetPriceEUR && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-white/60">Ersparnis durch BTC-Kurs</span>
+              <span className="text-white/60">Rabatt-Fortschritt</span>
               <span className="text-white font-semibold">{Math.round(progress)}%</span>
             </div>
             <Progress value={progress} className="h-2 rounded-full bg-white/10" />
-            <p className="text-[10px] text-white/50">
-              Aktuell: {formatSats(currentPriceSats)} sats {currentPriceSats < item.targetPriceSats ? '✓' : ''}
-            </p>
+            <div className="flex justify-between text-[10px] text-white/50">
+              <span>Aktuell: {formatEuros(currentPriceEUR)}</span>
+              <span>Ziel: {formatEuros(targetPriceEUR)}</span>
+            </div>
           </div>
         )}
       </CardHeader>
@@ -173,29 +184,25 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
           <div className="grid gap-4 sm:grid-cols-2">
             <Card className="bg-white/5 border-white/10">
               <CardHeader>
-                <p className="text-sm text-white/60">Zielpreis</p>
+                <p className="text-sm text-white/60">Zielpreis (mit Rabatt)</p>
                 <p className="text-3xl font-bold text-white">
-                  {targetInEuro !== undefined ? formatEuros(targetInEuro) : '—'}
+                  {targetPriceEUR !== undefined ? formatEuros(targetPriceEUR) : '—'}
                 </p>
                 <p className="text-sm text-white/50">
-                  {formatSats(item.targetPriceSats)} sats
+                  {formatSats(targetPriceSats)} sats
                 </p>
               </CardHeader>
             </Card>
 
-            {currentPriceSats && (
+            {currentPriceEUR && (
               <Card className="bg-white/5 border-white/10">
                 <CardHeader>
-                  <p className="text-sm text-white/60">Aktueller Preis</p>
+                  <p className="text-sm text-white/60">Aktueller Preis (Shop)</p>
                   <p className="text-3xl font-bold text-white">
-                    {formatSats(currentPriceSats)} sats
+                    {formatEuros(currentPriceEUR)}
                   </p>
                   <p className="text-sm text-white/50">
-                    {currentPriceSats < item.targetPriceSats ? (
-                      <span className="text-green-400">✓ Ziel erreicht!</span>
-                    ) : (
-                      <span>{Math.round(progress)}% Ersparnis</span>
-                    )}
+                    {currentPriceSats ? `${formatSats(currentPriceSats)} sats` : '—'}
                   </p>
                 </CardHeader>
               </Card>
@@ -203,13 +210,17 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
           </div>
 
           {/* Progress */}
-          {currentPriceSats && (
+          {currentPriceEUR && targetPriceEUR && currentPriceEUR !== targetPriceEUR && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-white/60">Ersparnis durch BTC-Kurs</span>
+                <span className="text-white/60">Rabatt-Fortschritt</span>
                 <span className="text-white font-semibold">{Math.round(progress)}%</span>
               </div>
               <Progress value={progress} className="h-3 rounded-full bg-white/10" />
+              <div className="flex justify-between text-xs text-white/50">
+                <span>Gespart: {formatEuros(currentPriceEUR - targetPriceEUR)}</span>
+                {isReady && <span className="text-green-400">✓ Ziel erreicht!</span>}
+              </div>
             </div>
           )}
 

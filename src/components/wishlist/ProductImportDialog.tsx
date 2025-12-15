@@ -92,6 +92,7 @@ export function ProductImportDialog({
         notes: notes.trim() || undefined,
         targetPriceSats: targetSats,
         targetPriceEUR: targetEuroValue,
+        sourcePriceEUR: recommendedPriceEUR, // Aktueller Preis vom Shop
         source: metadata?.source,
       });
 

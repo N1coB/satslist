@@ -98,6 +98,41 @@ const Index = () => {
           </div>
         </div>
 
+        {/* Bitcoin Price */}
+        {priceData && (
+          <Card className="bg-gradient-to-r from-orange-500/20 to-purple-500/20 border-orange-500/30">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-white/60 uppercase tracking-wide">Bitcoin Preis</p>
+                  <p className="text-3xl font-bold text-white">
+                    {priceData.satsToEuro(100000000).toLocaleString('de-DE', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}
+                  </p>
+                  <p className="text-xs text-white/50 mt-1">
+                    1 BTC = 100.000.000 sats
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-white/60">1.000 sats</p>
+                  <p className="text-2xl font-bold text-orange-300">
+                    {priceData.satsToEuro(1000).toLocaleString('de-DE', {
+                      style: 'currency',
+                      currency: 'EUR',
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats */}
         <WishlistStats
           count={stats.count}
