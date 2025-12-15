@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bookmark, Link2, Sparkles, Trash2, X, ExternalLink } from 'lucide-react';
+import { Bookmark, Link2, Sparkles, Trash2, ExternalLink } from 'lucide-react';
 import { formatEuros, formatSats } from '@/lib/format';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -33,9 +33,6 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
   const targetInEuro = item.targetPriceEUR ?? (bitcoinPrice?.satsToEuro
     ? bitcoinPrice.satsToEuro(item.targetPriceSats)
     : undefined);
-
-  const badgeVariant = isReady ? 'secondary' : 'outline';
-  const badgeLabel = isReady ? 'Ziel erreicht!' : 'Am Sparen';
 
   return (
     <>

@@ -38,7 +38,6 @@ const Index = () => {
     isLoading,
     publishStatus,
     rateLimitWarning,
-    refetch,
   } = useWishlist({ logRelay });
   const { data: priceData } = useBitcoinPrice();
   const [importDialogOpen, setImportDialogOpen] = useState(false);
