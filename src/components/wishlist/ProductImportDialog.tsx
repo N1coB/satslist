@@ -44,9 +44,10 @@ export function ProductImportDialog({
       setImage(metadata.image);
     }
 
-    if (typeof metadata.priceEUR === 'number' && priceData) {
+    const priceEUR = metadata.priceEUR;
+    if (typeof priceEUR === 'number' && priceData) {
       setTargetPrice((prev) =>
-        prev > 0 ? prev : Math.round(priceData.euroToSats(metadata.priceEUR))
+        prev > 0 ? prev : Math.round(priceData.euroToSats(priceEUR))
       );
     }
   }, [metadata, priceData]);
