@@ -183,66 +183,66 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
           )}
 
           {/* Preis-Übersicht */}
-          <Card className="bg-white/5 border-white/10">
-            <CardHeader>
-              <CardTitle className="text-lg text-white mb-4">Preis-Übersicht</CardTitle>
-              <div className="space-y-6">
-                {/* Aktueller Preis */}
-                {currentPriceEUR && (
-                  <div>
-                    <p className="text-xs text-white/60 mb-1">Aktueller Preis (Shop)</p>
-                    <p className="text-3xl font-bold text-white">
-                      {formatEuros(currentPriceEUR)}
-                    </p>
-                    <p className="text-sm text-white/50 mt-1">
-                      {currentPriceSats ? `${formatSats(currentPriceSats)} sats` : '—'}
-                    </p>
+          <div className="grid gap-4">
+            {/* Zielpreis - IMMER anzeigen */}
+            <Card className="bg-gradient-to-br from-orange-500/20 to-orange-600/10 border-orange-500/30">
+              <CardHeader>
+                <p className="text-sm text-orange-200/80 mb-2">Dein Zielpreis</p>
+                <p className="text-4xl font-bold text-white">
+                  {targetPriceEUR !== undefined ? formatEuros(targetPriceEUR) : '—'}
+                </p>
+                <p className="text-sm text-white/60 mt-2">
+                  {formatSats(targetPriceSats)} sats
+                </p>
+                {isReady && (
+                  <div className="mt-4">
+                    <Badge className="bg-green-500/30 text-green-200 border-green-400/40 text-sm px-3 py-1">
+                      <Sparkles className="w-4 h-4 mr-1" />
+                      Ziel erreicht!
+                    </Badge>
                   </div>
                 )}
+              </CardHeader>
+            </Card>
 
-                {/* Fortschrittsbalken */}
-                {currentPriceEUR && targetPriceEUR && (
-                  <div className="space-y-3 py-4 border-y border-white/10">
+            {/* Aktueller Preis - nur wenn vorhanden */}
+            {currentPriceEUR && (
+              <Card className="bg-white/5 border-white/10">
+                <CardHeader>
+                  <p className="text-sm text-white/60 mb-2">Aktueller Shop-Preis</p>
+                  <p className="text-3xl font-bold text-white">
+                    {formatEuros(currentPriceEUR)}
+                  </p>
+                  <p className="text-sm text-white/50 mt-2">
+                    {currentPriceSats ? `${formatSats(currentPriceSats)} sats` : '—'}
+                  </p>
+                </CardHeader>
+              </Card>
+            )}
+
+            {/* Fortschrittsbalken - nur wenn beide Preise vorhanden */}
+            {currentPriceEUR && targetPriceEUR && currentPriceEUR > targetPriceEUR && (
+              <Card className="bg-white/5 border-white/10">
+                <CardHeader>
+                  <p className="text-sm text-white/60 mb-3">Rabatt-Fortschritt</p>
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-white/60">Rabatt-Fortschritt</span>
-                      <span className="text-xl font-bold text-orange-300">{Math.round(progress)}%</span>
+                      <span className="text-sm text-white/70">Ersparnis</span>
+                      <span className="text-2xl font-bold text-orange-300">{Math.round(progress)}%</span>
                     </div>
                     <Progress value={progress} className="h-4 rounded-full bg-white/10" />
                     <div className="flex justify-between text-sm text-white/60">
-                      <span>Start: {formatEuros(currentPriceEUR)}</span>
-                      <span>Ziel: {formatEuros(targetPriceEUR)}</span>
+                      <span>{formatEuros(currentPriceEUR)}</span>
+                      <span className="text-green-300 font-semibold">
+                        −{formatEuros(currentPriceEUR - targetPriceEUR)}
+                      </span>
+                      <span>{formatEuros(targetPriceEUR)}</span>
                     </div>
-                    {currentPriceEUR > targetPriceEUR && (
-                      <div className="text-center">
-                        <p className="text-sm text-green-300">
-                          Du sparst: <span className="font-bold">{formatEuros(currentPriceEUR - targetPriceEUR)}</span>
-                        </p>
-                      </div>
-                    )}
                   </div>
-                )}
-
-                {/* Zielpreis */}
-                <div>
-                  <p className="text-xs text-white/60 mb-1">Zielpreis (mit Rabatt)</p>
-                  <p className="text-3xl font-bold text-orange-300">
-                    {targetPriceEUR !== undefined ? formatEuros(targetPriceEUR) : '—'}
-                  </p>
-                  <p className="text-sm text-white/50 mt-1">
-                    {formatSats(targetPriceSats)} sats
-                  </p>
-                  {isReady && (
-                    <div className="mt-3">
-                      <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
-                        <Sparkles className="w-3 h-3 mr-1" />
-                        Ziel erreicht!
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-          </Card>
+                </CardHeader>
+              </Card>
+            )}
+          </div>
 
           {/* Notes */}
           {item.notes && (
