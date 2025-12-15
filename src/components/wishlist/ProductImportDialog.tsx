@@ -28,7 +28,7 @@ export function ProductImportDialog({
   const [title, setTitle] = useState('');
   const [image, setImage] = useState<string | undefined>(undefined);
   const [notes, setNotes] = useState('');
-  const [targetPrice, setTargetPrice] = useState(0);
+  const [targetPrice, setTargetPrice] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -44,17 +44,23 @@ export function ProductImportDialog({
       setImage(metadata.image);
     }
 
-    if (metadata.priceEUR && priceData) {
-      setTargetPrice((prev) => (prev > 0 ? prev : Math.round(priceData.euroToSats(metadata.priceEUR))));
+    if (typeof metadata.priceEUR === 'number' && priceData) {
+      setTargetPrice((prev) =>
+        prev > 0 ? prev : Math.round(priceData.euroToSats(metadata.priceEUR))
+      );
     }
   }, [metadata, priceData]);
 
   const recommendedPriceEUR = metadata?.priceEUR;
 
   const targetEuro = useMemo(() => {
-    if (targetPrice <= 0 || !priceData) return undefined;
-    return priceData.satsToEuro(targetPrice);
-  }, [targetPrice, priceData]);
+    const normalizedTarget = targetPrice ?? 0;
+    if (normalizedTarget <= 0 || !priceData) {
+      return undefined;
+    }
+
+    return priceData.satsToEuro(normalizedTarget);
+  }, [priceData, targetPrice]);
 
   const canSave = Boolean(title && targetPrice > 0);
 
