@@ -181,5 +181,6 @@ export function useWishlist(options?: UseWishlistOptions) {
       lastSuccessAt: lastPublishSuccess,
     },
     rateLimitWarning,
+    refetch: queryResult.refetch,
   };
 }
