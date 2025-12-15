@@ -139,22 +139,10 @@ const Index = () => {
           totalTarget={stats.totalTarget}
         />
 
-        {/* Action Buttons */}
-        <div className="flex gap-3">
-          <Button onClick={() => setAddDialogOpen(true)} size="lg" className="flex-1">
-            <Plus className="w-5 h-5 mr-2" />
-            Neues Ziel
-          </Button>
-          <Button onClick={() => openImportDialog()} variant="secondary" size="lg" className="flex-1">
-            <Zap className="w-5 h-5 mr-2" />
-            Produkt importieren
-          </Button>
-        </div>
-
         {/* Import from URL */}
         <Card className="bg-white/5 border-white/10">
           <CardHeader>
-            <CardTitle className="text-white text-sm">Schnell-Import</CardTitle>
+            <CardTitle className="text-white text-sm">Produkt hinzufügen</CardTitle>
             <CardDescription className="text-white/60 text-xs">
               Produktlink einfügen und direkt importieren
             </CardDescription>

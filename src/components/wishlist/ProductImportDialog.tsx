@@ -69,6 +69,12 @@ export function ProductImportDialog({
 
   const canSave = Boolean(title && targetEuroValue && targetSats);
 
+  const applyDiscount = (percent: number) => {
+    if (!recommendedPriceEUR) return;
+    const discounted = recommendedPriceEUR * (1 - percent / 100);
+    setTargetEuro(discounted.toFixed(2));
+  };
+
   const handleSubmit = async () => {
     if (!canSave || !targetEuroValue || !targetSats) {
       setErrorMessage('Bitte Zielpreis in EUR angeben.');
@@ -172,22 +178,64 @@ export function ProductImportDialog({
           )}
           <div className="space-y-3">
             <label className="text-sm font-semibold text-white">Zielpreis</label>
-            <div className="grid gap-2">
-              <label className="text-xs text-white/60">EUR</label>
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                placeholder="150.00"
-                value={targetEuro}
-                onChange={(event) => setTargetEuro(event.target.value)}
-                className="bg-white/10 text-white text-lg font-semibold placeholder:text-white/40"
-              />
-              {targetSats && (
-                <p className="text-xs text-orange-300/80">
-                  ≈ {formatSats(targetSats)} sats
-                </p>
+            <div className="grid gap-3">
+              {recommendedPriceEUR && (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => applyDiscount(10)}
+                    className="flex-1 text-xs border-white/20 text-white hover:bg-white/10"
+                  >
+                    -10%
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => applyDiscount(20)}
+                    className="flex-1 text-xs border-white/20 text-white hover:bg-white/10"
+                  >
+                    -20%
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => applyDiscount(50)}
+                    className="flex-1 text-xs border-white/20 text-white hover:bg-white/10"
+                  >
+                    -50%
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => applyDiscount(80)}
+                    className="flex-1 text-xs border-white/20 text-white hover:bg-white/10"
+                  >
+                    -80%
+                  </Button>
+                </div>
               )}
+              <div className="grid gap-2">
+                <label className="text-xs text-white/60">EUR</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="150.00"
+                  value={targetEuro}
+                  onChange={(event) => setTargetEuro(event.target.value)}
+                  className="bg-white/10 text-white text-lg font-semibold placeholder:text-white/40"
+                />
+                {targetSats && (
+                  <p className="text-xs text-orange-300/80">
+                    ≈ {formatSats(targetSats)} sats
+                  </p>
+                )}
+              </div>
             </div>
           </div>
           <Textarea
