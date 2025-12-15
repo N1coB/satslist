@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Sparkles, Tag } from 'lucide-react';
+import { Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';

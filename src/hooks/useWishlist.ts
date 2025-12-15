@@ -103,7 +103,7 @@ export function useWishlist() {
     },
   });
 
-  const wishlist: WishlistItem[] = queryResult.data ?? [];
+  const wishlist: WishlistItem[] = useMemo(() => queryResult.data ?? [], [queryResult.data]);
 
   const stats = useMemo(() => {
     const totalTarget = wishlist.reduce((sum, item) => sum + item.targetPriceSats, 0);
