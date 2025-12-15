@@ -81,4 +81,265 @@ const Index = () => {
 
   if (!user) {
     return (
-      <div className="min-h...
+      <div className="min-h-screen bg-gradient-to-b from-[#0c0c11] via-[#151521] to-[#0c0c11] text-white">
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-2xl mx-auto text-center space-y-8">
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-orange-400 to-purple-500 bg-clip-text text-transparent">
+              SatsList
+            </h1>
+            <p className="text-xl text-white/70">
+              Deine Bitcoin Wunschliste auf Nostr
+            </p>
+            <LoginArea className="max-w-sm mx-auto" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#0c0c11] via-[#151521] to-[#0c0c11] text-white">
+      <div className="container mx-auto px-4 py-8 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-400 to-purple-500 bg-clip-text text-transparent">
+              SatsList
+            </h1>
+            <p className="text-sm text-white/60 mt-1">Deine Bitcoin Wunschliste</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefetch}
+              disabled={isRefetching}
+              className="text-white border-white/20"
+            >
+              <RefreshCcw className={`w-4 h-4 mr-2 ${isRefetching ? 'animate-spin' : ''}`} />
+              Aktualisieren
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setNostrSettingsOpen(true)}
+              className="text-white"
+            >
+              <SlidersHorizontal className="w-4 h-4 mr-2" />
+              Relays
+            </Button>
+            <LoginArea className="max-w-60" />
+          </div>
+        </div>
+
+        {/* Stats */}
+        <WishlistStats
+          count={stats.count}
+          readyCount={stats.readyCount}
+          totalTarget={stats.totalTarget}
+        />
+
+        {/* Action Buttons */}
+        <div className="flex gap-3">
+          <Button onClick={() => setAddDialogOpen(true)} size="lg" className="flex-1">
+            <Plus className="w-5 h-5 mr-2" />
+            Neues Ziel
+          </Button>
+          <Button onClick={() => openImportDialog()} variant="secondary" size="lg" className="flex-1">
+            <Zap className="w-5 h-5 mr-2" />
+            Produkt importieren
+          </Button>
+        </div>
+
+        {/* Import from URL */}
+        <Card className="bg-white/5 border-white/10">
+          <CardHeader>
+            <CardTitle className="text-white text-sm">Schnell-Import</CardTitle>
+            <CardDescription className="text-white/60 text-xs">
+              Produktlink einfügen und direkt importieren
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Input
+                placeholder="https://amazon.de/produkt..."
+                value={importUrl}
+                onChange={(e) => setImportUrl(e.target.value)}
+                className="bg-white/10 text-white border-white/20 placeholder:text-white/40"
+              />
+              <Button
+                onClick={() => openImportDialog(importUrl)}
+                disabled={!importUrl}
+                variant="secondary"
+              >
+                Import
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Rate Limit Warning */}
+        {rateLimitWarning && (
+          <Card className="bg-orange-500/10 border-orange-500/30">
+            <CardContent className="py-3">
+              <p className="text-sm text-orange-300">{rateLimitWarning}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Publish Status */}
+        {publishStatus.status === 'pending' && (
+          <Card className="bg-blue-500/10 border-blue-500/30">
+            <CardContent className="py-3">
+              <p className="text-sm text-blue-300">Veröffentliche...</p>
+            </CardContent>
+          </Card>
+        )}
+        {publishStatus.error && (
+          <Card className="bg-red-500/10 border-red-500/30">
+            <CardContent className="py-3">
+              <p className="text-sm text-red-300">Fehler: {publishStatus.error}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Wishlist Items */}
+        {isLoading ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="bg-white/3 border-white/10">
+                <CardHeader>
+                  <Skeleton className="h-6 w-3/4 bg-white/10" />
+                  <Skeleton className="h-4 w-1/2 bg-white/10" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-32 w-full bg-white/10" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : wishlist.length === 0 ? (
+          <Card className="bg-white/3 border-white/10 border-dashed">
+            <CardContent className="py-12 text-center">
+              <p className="text-white/60">
+                Noch keine Wünsche eingetragen. Erstelle dein erstes Ziel!
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {wishlist.map((item) => (
+              <WishlistCard key={item.id} item={item} bitcoinPrice={priceData} />
+            ))}
+          </div>
+        )}
+
+        {/* Debug Info */}
+        <details className="mt-8">
+          <summary className="cursor-pointer text-sm text-white/40 hover:text-white/60">
+            Debug Info
+          </summary>
+          <div className="mt-4 space-y-4">
+            <Card className="bg-white/5 border-white/10">
+              <CardHeader>
+                <CardTitle className="text-white text-sm">
+                  {debugEvents.length} Events
+                </CardTitle>
+                <CardDescription className="text-white/60 text-xs">
+                  Die Liste zeigt rohe Kind-30078-Events. Wenn nichts angezeigt wird, prüfe deine Relays und Wallet-Rechte.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <pre className="text-xs text-white/80 overflow-x-auto">
+                  {JSON.stringify(debugEvents, null, 2)}
+                </pre>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/5 border-white/10">
+              <CardHeader>
+                <CardTitle className="text-white text-sm">
+                  Relay Log (letzte 15)
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1 text-xs text-white/60 font-mono max-h-64 overflow-y-auto">
+                  {relayLog.map((log, i) => (
+                    <div key={i}>{log}</div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/5 border-white/10">
+              <CardHeader>
+                <CardTitle className="text-white text-sm">Relays & Rechte</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-xs text-white/70">
+                  {relayList.map((relay) => (
+                    <div key={relay.url} className="flex items-center justify-between">
+                      <span className="font-mono">{relay.url}</span>
+                      <span className="text-white/50">
+                        {relay.read && 'R'} / {relay.write && 'W'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/5 border-white/10">
+              <CardHeader>
+                <CardTitle className="text-white text-sm">Publizieren</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-white/60">Status:</span>
+                    <span className="text-white">{publishStatus.status}</span>
+                  </div>
+                  {publishStatus.lastSuccessAt && (
+                    <div className="flex justify-between">
+                      <span className="text-white/60">Letzter Erfolg:</span>
+                      <span className="text-white">
+                        {new Date(publishStatus.lastSuccessAt).toLocaleTimeString('de-DE')}
+                      </span>
+                    </div>
+                  )}
+                  {publishStatus.error && (
+                    <div className="flex justify-between">
+                      <span className="text-white/60">Fehler:</span>
+                      <span className="text-red-400">{publishStatus.error}</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </details>
+      </div>
+
+      {/* Dialogs */}
+      <AddProductDialog
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onSave={handleSave}
+        priceData={priceData}
+      />
+      <ProductImportDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onSave={handleSave}
+        priceData={priceData}
+        initialUrl={importUrl}
+      />
+      <NostrSettingsDialog
+        open={nostrSettingsOpen}
+        onOpenChange={setNostrSettingsOpen}
+      />
+    </div>
+  );
+};
+
+export default Index;
