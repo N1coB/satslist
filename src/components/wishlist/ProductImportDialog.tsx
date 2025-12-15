@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { WishlistPayload } from '@/types/wishlist';
 import { useProductMetadata } from '@/hooks/useProductMetadata';
 import type { BitcoinPriceData } from '@/hooks/useBitcoinPrice';
-import { formatEuros } from '@/lib/format';
+import { formatEuros, formatSats } from '@/lib/format';
 
 interface ProductImportDialogProps {
   open: boolean;
@@ -170,21 +170,25 @@ export function ProductImportDialog({
               </p>
             </div>
           )}
-          <div className="space-y-2">
-            <label className="text-xs uppercase tracking-[0.3em] text-white/60">Zielpreis (EUR)</label>
-            <Input
-              type="number"
-              min={0}
-              placeholder="Ziele den Preis in Euro"
-              value={targetEuro}
-              onChange={(event) => setTargetEuro(event.target.value)}
-              className="bg-white/10 text-white placeholder:text-white/60"
-            />
-            {targetSats && (
-              <p className="text-[11px] text-white/60">
-                ≈ {targetSats.toLocaleString('de-DE')} sats
-              </p>
-            )}
+          <div className="space-y-3">
+            <label className="text-sm font-semibold text-white">Zielpreis</label>
+            <div className="grid gap-2">
+              <label className="text-xs text-white/60">EUR</label>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="150.00"
+                value={targetEuro}
+                onChange={(event) => setTargetEuro(event.target.value)}
+                className="bg-white/10 text-white text-lg font-semibold placeholder:text-white/40"
+              />
+              {targetSats && (
+                <p className="text-xs text-orange-300/80">
+                  ≈ {formatSats(targetSats)} sats
+                </p>
+              )}
+            </div>
           </div>
           <Textarea
             placeholder="Notizen, Wunschdatum oder Sonderwünsche"

@@ -13,102 +13,115 @@ interface WishlistCardProps {
 }
 
 export function WishlistCard({ item, bitcoinPrice }: WishlistCardProps) {
-  const current = item.currentPriceSats ?? item.targetPriceSats;
-  const progress = Math.min(1, current / Math.max(1, item.targetPriceSats));
-  const isReady = current <= item.targetPriceSats;
-  const targetInEuro = bitcoinPrice?.satsToEuro
+  // Calculate current BTC price in sats if we have live price data
+  const currentPriceSats = bitcoinPrice && item.targetPriceEUR
+    ? bitcoinPrice.euroToSats(item.targetPriceEUR)
+    : item.currentPriceSats;
+
+  // Progress: 0% = target price, 100% = saved enough (inverted logic for "saving up")
+  // We're tracking if BTC price went UP (making target cheaper in sats)
+  const progress = currentPriceSats && item.targetPriceSats > 0
+    ? Math.max(0, Math.min(100, ((item.targetPriceSats - currentPriceSats) / item.targetPriceSats) * 100))
+    : 0;
+
+  const isReady = currentPriceSats ? currentPriceSats <= item.targetPriceSats : false;
+  const targetInEuro = item.targetPriceEUR ?? (bitcoinPrice?.satsToEuro
     ? bitcoinPrice.satsToEuro(item.targetPriceSats)
-    : undefined;
+    : undefined);
 
   const badgeVariant = isReady ? 'secondary' : 'outline';
-  const badgeLabel = isReady ? 'Zielpreis erreicht' : 'Am Beansparen';
+  const badgeLabel = isReady ? 'Ziel erreicht!' : 'Am Sparen';
 
   return (
     <Card className="group bg-white/3 border-white/10 shadow-2xl shadow-orange-600/30">
       <CardHeader className="space-y-3">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-xl text-white">{item.title}</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {item.link ? (
-                <a
-                  href={item.link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-orange-300 hover:text-orange-200"
-                >
-                  <Link2 className="w-3 h-3" />
-                  Shop öffnen
-                </a>
-              ) : (
-                'Kein Link hinterlegt'
-              )}
-            </p>
+          <div className="flex-1">
+            <CardTitle className="text-lg font-bold text-white leading-tight">{item.title}</CardTitle>
+            {item.link && (
+              <a
+                href={item.link}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 mt-1"
+              >
+                <Link2 className="w-3 h-3" />
+                Zum Shop
+              </a>
+            )}
           </div>
-          <Badge variant={badgeVariant} className="uppercase text-xs font-semibold tracking-widest">
-            <Sparkles className="w-3 h-3" />
-            <span className="ml-1">
-              {badgeLabel}
-            </span>
-          </Badge>
+          {isReady && (
+            <Badge variant="secondary" className="bg-green-500/20 text-green-300 border-green-500/30 text-xs font-semibold">
+              <Sparkles className="w-3 h-3 mr-1" />
+              Bereit!
+            </Badge>
+          )}
         </div>
-        <div className="flex items-center gap-3">
-          <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-orange-500/40 via-orange-400/20 to-transparent p-1">
-            {item.image ? (
+        <div className="flex items-start gap-4">
+          {item.image && (
+            <div className="h-20 w-20 rounded-xl bg-gradient-to-br from-orange-500/20 via-orange-400/10 to-transparent p-1 flex-shrink-0">
               <img
                 src={item.image}
                 alt={item.title}
-                className="h-full w-full rounded-xl object-cover border border-white/10"
+                className="h-full w-full rounded-lg object-cover border border-white/10"
                 loading="lazy"
               />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center rounded-xl border border-dashed border-white/30 bg-white/5 text-xs uppercase tracking-wide text-white/70">
-                {item.title.slice(0, 2).toUpperCase()}
+            </div>
+          )}
+          <div className="space-y-2 flex-1">
+            <div>
+              <p className="text-2xl font-bold text-white">
+                {targetInEuro !== undefined ? formatEuros(targetInEuro) : '—'}
+              </p>
+              <p className="text-xs text-white/50">
+                {formatSats(item.targetPriceSats)} sats
+              </p>
+            </div>
+            {item.source && (
+              <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-orange-300/80">
+                <Bookmark className="w-3 h-3" />
+                {item.source}
               </div>
             )}
           </div>
-          <div className="space-y-1 text-xs text-muted-foreground">
-            <p>
-              Ziel: <span className="text-white font-semibold">{formatSats(item.targetPriceSats)} sats</span>
+        </div>
+        {currentPriceSats && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-white/60">Ersparnis durch BTC-Kurs</span>
+              <span className="text-white font-semibold">{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} className="h-2 rounded-full bg-white/10" />
+            <p className="text-[10px] text-white/50">
+              Aktuell: {formatSats(currentPriceSats)} sats {currentPriceSats < item.targetPriceSats ? '✓' : ''}
             </p>
-            {targetInEuro !== undefined && (
-              <p>
-                ≈ {formatEuros(targetInEuro)}
-              </p>
-            )}
-            {item.source && (
-              <p className="flex items-center gap-1 text-[11px] uppercase tracking-widest text-orange-200">
-                <Bookmark className="w-3 h-3" />
-                {item.source}
-              </p>
-            )}
           </div>
-        </div>
-        <div className="space-y-1">
-          <div className="flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
-            <span>Fortschritt</span>
-            <span className="text-white font-semibold">{Math.round(progress * 100)}%</span>
-          </div>
-          <Progress value={progress * 100} className="h-2 rounded-full bg-white/10" />
-        </div>
+        )}
       </CardHeader>
-      <CardContent className="space-y-3 text-sm text-white/90">
-        <p className="text-xs uppercase text-orange-200 tracking-[0.3em]">Notizen</p>
-        <p className="text-sm text-white/90">{item.notes ?? 'Keine Notizen vorhanden.'}</p>
-      </CardContent>
-      <CardFooter className="flex flex-wrap gap-3">
-        <Button
-          variant="ghost"
-          className="text-xs tracking-wide text-white/80 hover:text-white"
-          size="sm"
-          asChild
-        >
-          <a href={item.link ?? '#'} target="_blank" rel="noreferrer">
-            Produkt öffnen
-          </a>
-        </Button>
-        <span className="text-xs text-muted-foreground">
-          Hinzugefügt {new Date(item.createdAt * 1000).toLocaleDateString('de-DE')}
+      {item.notes && (
+        <CardContent className="space-y-2 pt-4">
+          <p className="text-[10px] uppercase text-orange-300/60 tracking-wider">Notizen</p>
+          <p className="text-sm text-white/80 leading-relaxed">{item.notes}</p>
+        </CardContent>
+      )}
+      <CardFooter className="flex items-center justify-between pt-4 border-t border-white/10">
+        {item.link ? (
+          <Button
+            variant="ghost"
+            className="text-xs text-orange-400 hover:text-orange-300 hover:bg-orange-500/10"
+            size="sm"
+            asChild
+          >
+            <a href={item.link} target="_blank" rel="noreferrer">
+              <Link2 className="w-3 h-3 mr-1" />
+              Zum Produkt
+            </a>
+          </Button>
+        ) : (
+          <div />
+        )}
+        <span className="text-[10px] text-white/40">
+          {new Date(item.createdAt * 1000).toLocaleDateString('de-DE')}
         </span>
       </CardFooter>
     </Card>

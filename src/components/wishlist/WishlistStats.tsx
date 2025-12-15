@@ -1,5 +1,6 @@
-import { ChartLine } from 'lucide-react';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { Target, CheckCircle2, Coins } from 'lucide-react';
+import { Card, CardHeader } from '@/components/ui/card';
+import { formatSats } from '@/lib/format';
 
 interface WishlistStatsProps {
   count: number;
@@ -9,24 +10,35 @@ interface WishlistStatsProps {
 
 export function WishlistStats({ count, readyCount, totalTarget }: WishlistStatsProps) {
   return (
-    <Card className="side-card bg-gradient-to-br from-orange-500 via-orange-400 to-purple-500 text-white shadow-2xl border-0">
-      <CardHeader className="space-y-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Deine Sats-Vision</CardTitle>
-          <ChartLine className="w-5 h-5" />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="space-y-1 rounded-2xl border border-white/30 bg-white/5 p-3 text-xs uppercase tracking-[0.3em] text-white/80">
-            <p className="text-xs">Ziele</p>
-            <p className="text-2xl font-semibold text-white">{count}</p>
+    <Card className="bg-gradient-to-br from-orange-500/20 via-orange-400/10 to-purple-500/20 border-orange-500/30 shadow-lg">
+      <CardHeader>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-orange-500/20 flex items-center justify-center">
+              <Target className="w-6 h-6 text-orange-400" />
+            </div>
+            <div>
+              <p className="text-xs text-white/60 uppercase tracking-wide">Ziele</p>
+              <p className="text-2xl font-bold text-white">{count}</p>
+            </div>
           </div>
-          <div className="space-y-1 rounded-2xl border border-white/30 bg-white/5 p-3 text-xs uppercase tracking-[0.3em] text-white/80">
-            <p className="text-xs">Bereit</p>
-            <p className="text-2xl font-semibold text-white">{readyCount}</p>
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6 text-green-400" />
+            </div>
+            <div>
+              <p className="text-xs text-white/60 uppercase tracking-wide">Erreicht</p>
+              <p className="text-2xl font-bold text-white">{readyCount}</p>
+            </div>
           </div>
-          <div className="space-y-1 rounded-2xl border border-white/30 bg-white/5 p-3 text-xs uppercase tracking-[0.3em] text-white/80">
-            <p className="text-xs">Sats gesamt</p>
-            <p className="text-2xl font-semibold text-white">{totalTarget.toLocaleString('de-DE')}</p>
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+              <Coins className="w-6 h-6 text-purple-400" />
+            </div>
+            <div>
+              <p className="text-xs text-white/60 uppercase tracking-wide">Gesamt</p>
+              <p className="text-lg font-bold text-white">{formatSats(totalTarget)} <span className="text-sm text-white/50">sats</span></p>
+            </div>
           </div>
         </div>
       </CardHeader>

@@ -49,11 +49,11 @@ export function AddProductDialog({
 
   const effectiveSats = targetSats && targetSats > 0 ? targetSats : convertedSats;
 
-  const helperLabel = targetSats
+  const helperLabel = targetSats && targetSats > 0
     ? `≈ ${convertedEuro ? formatEuros(convertedEuro) : '—'}`
-    : targetEuro
+    : targetEuro && targetEuro > 0
       ? `≈ ${formatSats(convertedSats ?? 0)} sats`
-      : 'Zielpreis festlegen';
+      : 'EUR oder sats eingeben';
 
   const handleSubmit = async () => {
     if (!title || !effectiveSats) {
@@ -122,30 +122,42 @@ export function AddProductDialog({
               placeholder="Bild-URL (optional)"
               className="bg-[#151521] text-white"
             />
-            <div className="grid gap-1 text-white/80">
-              <label className="text-xs uppercase tracking-[0.3em] text-white/50">Zielpreis</label>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Input
-                  type="number"
-                  min={0}
-                  value={targetSats === '' ? '' : targetSats}
-                  onChange={(event) => setTargetSats(event.target.value === '' ? '' : Number(event.target.value))}
-                  placeholder="Ziel in Sats"
-                  className="bg-[#151521] text-white"
-                />
-                <div className="grid gap-1">
+            <div className="grid gap-3 text-white/80">
+              <label className="text-sm font-semibold text-white">Zielpreis</label>
+              <div className="grid gap-3">
+                <div className="grid gap-2">
+                  <label className="text-xs text-white/60">EUR</label>
                   <Input
                     type="number"
                     min={0}
+                    step="0.01"
                     value={targetEuro === '' ? '' : targetEuro}
                     onChange={(event) => setTargetEuro(event.target.value === '' ? '' : Number(event.target.value))}
-                    placeholder="oder in EUR"
+                    placeholder="150.00"
+                    className="bg-[#151521] text-white text-lg font-semibold"
+                  />
+                </div>
+                <div className="flex items-center gap-2 text-white/40">
+                  <div className="h-px flex-1 bg-white/10" />
+                  <span className="text-xs">oder</span>
+                  <div className="h-px flex-1 bg-white/10" />
+                </div>
+                <div className="grid gap-2">
+                  <label className="text-xs text-white/60">sats</label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={targetSats === '' ? '' : targetSats}
+                    onChange={(event) => setTargetSats(event.target.value === '' ? '' : Number(event.target.value))}
+                    placeholder="250000"
                     className="bg-[#151521] text-white"
                   />
-                  <p className="text-[11px] uppercase tracking-[0.4em] text-white/40">
+                </div>
+                {(targetSats || targetEuro) && (
+                  <p className="text-xs text-orange-300/80 text-center">
                     {helperLabel}
                   </p>
-                </div>
+                )}
               </div>
             </div>
             <Textarea
