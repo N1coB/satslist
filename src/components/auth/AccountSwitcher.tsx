@@ -15,7 +15,6 @@ import { WalletModal } from '@/components/WalletModal';
 import { useLoggedInAccounts, type Account } from '@/hooks/useLoggedInAccounts';
 import { genUserName } from '@/lib/genUserName';
 import { NostrSettingsDialog } from '@/components/NostrSettingsDialog';
-import { useState } from 'react';
 
 interface AccountSwitcherProps {
   onAddAccountClick: () => void;
