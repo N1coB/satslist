@@ -28,11 +28,11 @@ const Index = () => {
   const { config } = useAppContext();
   const [relayLog, setRelayLog] = useState<string[]>([]);
   const logRelay = useCallback((message: string) => {
-    setRelayLog((prev) => [message, ...prev].slice(0, 20));
+    setRelayLog((prev) => [message, ...prev].slice(0, 15));
   }, []);
 
   const { user } = useCurrentUser();
-  const { wishlist, stats, addItem, isLoading, publishStatus } = useWishlist({ logRelay });
+  const { wishlist, stats, addItem, isLoading, publishStatus, rateLimitWarning } = useWishlist({ logRelay });
   const { data: priceData } = useBitcoinPrice();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -59,7 +59,6 @@ const Index = () => {
 
   const relayList = config.relayMetadata.relays;
 
-  // Logged-out state
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4">
@@ -136,6 +135,12 @@ const Index = () => {
           </Button>
         </div>
 
+        {rateLimitWarning && (
+          <div className="rounded-xl border border-yellow-500/50 bg-yellow-500/10 p-4 text-sm text-yellow-100">
+            {rateLimitWarning}
+          </div>
+        )}
+
         {isLoading ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
@@ -177,21 +182,21 @@ const Index = () => {
           </div>
         )}
 
-        <div className="rounded-2xl border border-white/20 bg-black/40 p-4 text-white/80 space-y-3">
+        <div className="rounded-2xl border border-white/20 bg-black/40 p-4 text-white/80 space-y-4">
           <div className="flex items-center justify-between text-xs uppercase tracking-[0.35em] text-white/60">
             <span>Debug Info</span>
             <span>{wishlist.length} Events</span>
           </div>
           <div className="text-[11px] text-white/80">
             <p className="text-white/60">
-              Die Liste zeigt die rohen Kind-30078-Events. Falls kein Event angezeigt wird, überprüfe, ob dein Relay-Set gelesen werden kann und ob deine Wallet (z. b. Alby) Lese-/Schreibrechte erteilt hat.
+              Die Liste zeigt rohe Kind-30078-Events. Wenn nichts angezeigt wird, prüfe deine Relays und Wallet-Rechte.
             </p>
           </div>
           <pre className="max-h-36 overflow-auto rounded-xl border border-white/10 bg-white/5 p-2 text-[11px] leading-relaxed text-white">
             {JSON.stringify(debugEvents, null, 2)}
           </pre>
           <div className="space-y-1 text-[11px] text-white/80">
-            <p className="text-white/60">Relay Log (letzte 10)</p>
+            <p className="text-white/60">Relay Log (letzte 15)</p>
             {relayLog.map((line) => (
               <p key={line} className="truncate text-xs text-white/70">
                 {line}
@@ -227,7 +232,7 @@ const Index = () => {
             </div>
           </div>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => {
               const blob = new Blob([
@@ -235,6 +240,7 @@ const Index = () => {
                   events: debugEvents,
                   relays: relayList,
                   publishStatus,
+                  relayLog,
                 }, null, 2),
               ], { type: 'application/json' });
               const url = URL.createObjectURL(blob);

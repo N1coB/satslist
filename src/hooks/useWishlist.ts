@@ -6,6 +6,25 @@ import type { NostrEvent } from '@nostrify/nostrify';
 import { WishlistItem, type WishlistPayload } from '@/types/wishlist';
 
 const WISHLIST_KIND = 30078;
+const RATE_LIMIT_DELAY = 2000;
+
+let queryQueue: Promise<unknown> = Promise.resolve();
+let lastQueryTime = 0;
+
+async function enqueueQuery<T>(fn: () => Promise<T>, log?: (message: string) => void) {
+  queryQueue = queryQueue.then(async () => {
+    const now = Date.now();
+    const wait = Math.max(0, RATE_LIMIT_DELAY - (now - lastQueryTime));
+    if (wait > 0) {
+      log?.(`Throttling query for ${wait}ms`);
+      await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+    lastQueryTime = Date.now();
+    return fn();
+  });
+
+  return queryQueue as Promise<T>;
+}
 
 type UnsignedWishlistEvent = Omit<NostrEvent, 'id' | 'sig'>;
 
@@ -73,6 +92,7 @@ export function useWishlist(options?: UseWishlistOptions) {
   const { user } = useCurrentUser();
   const [lastPublishError, setLastPublishError] = useState<string | null>(null);
   const [lastPublishSuccess, setLastPublishSuccess] = useState<number | null>(null);
+  const [rateLimitWarning, setRateLimitWarning] = useState<string | null>(null);
 
   const queryResult = useQuery({
     queryKey: ['wishlist', user?.pubkey],
@@ -80,25 +100,38 @@ export function useWishlist(options?: UseWishlistOptions) {
     queryFn: async ({ signal }) => {
       if (!user) return [];
 
-      logRelay('Querying wishlist events...');
-      const events = await nostr.query([
+      const filters = [
         {
           kinds: [WISHLIST_KIND],
           authors: [user.pubkey],
           '#d': ['satslist-wishlist'],
           limit: 100,
         },
-      ], { signal });
+      ];
 
-      logRelay(`Queried ${events.length} events`);
+      logRelay(`REQ filters: ${JSON.stringify(filters)}`);
 
-      return events.reduce<WishlistItem[]>((acc, event) => {
-        const parsed = parseWishlistEvent(event);
-        if (parsed) acc.push(parsed);
-        return acc;
-      }, []);
+      try {
+        const events = await enqueueQuery(() => nostr.query(filters, { signal }), logRelay);
+        logRelay(`Queried ${events.length} events`);
+        setRateLimitWarning(null);
+
+        return events.reduce<WishlistItem[]>((acc, event) => {
+          const parsed = parseWishlistEvent(event);
+          if (parsed) acc.push(parsed);
+          return acc;
+        }, []);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        logRelay(`Query failed: ${message}`);
+        if (message.toLowerCase().includes('rate')) {
+          setRateLimitWarning('Relays melden Rate-Limits. Bitte kurz warten oder weniger Relays verwenden.');
+        }
+        throw error;
+      }
     },
     staleTime: 1000 * 60 * 5,
+    retry: 2,
   });
 
   const mutationResult = useMutation({
@@ -147,5 +180,6 @@ export function useWishlist(options?: UseWishlistOptions) {
       error: lastPublishError,
       lastSuccessAt: lastPublishSuccess,
     },
+    rateLimitWarning,
   };
 }
