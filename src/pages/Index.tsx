@@ -91,7 +91,7 @@ const Index = () => {
             <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-400 to-purple-500 bg-clip-text text-transparent">
               SatsList
             </h1>
-            <p className="text-sm text-white/60 mt-1">Deine Bitcoin Wunschliste</p>
+            <p className="text-sm text-white/70 mt-1">Deine Bitcoin Wunschliste</p>
           </div>
           <div className="flex items-center gap-3">
             <LoginArea className="max-w-60" />
