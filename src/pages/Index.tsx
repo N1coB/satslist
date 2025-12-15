@@ -1,6 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useSeoMeta } from '@unhead/react';
-import { Plus, SlidersHorizontal, Zap, RefreshCcw } from 'lucide-react';
 
 import { LoginArea } from '@/components/auth/LoginArea';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -15,9 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 import { WishlistCard } from '@/components/wishlist/WishlistCard';
 import { WishlistStats } from '@/components/wishlist/WishlistStats';
-import { AddProductDialog } from '@/components/wishlist/AddProductDialog';
 import { ProductImportDialog } from '@/components/wishlist/ProductImportDialog';
-import { NostrSettingsDialog } from '@/components/NostrSettingsDialog';
 import type { WishlistPayload } from '@/types/wishlist';
 
 const Index = () => {
@@ -37,17 +34,15 @@ const Index = () => {
     wishlist,
     stats,
     addItem,
+    deleteItem,
     isLoading,
     publishStatus,
     rateLimitWarning,
     refetch,
   } = useWishlist({ logRelay });
   const { data: priceData } = useBitcoinPrice();
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importUrl, setImportUrl] = useState('');
-  const [nostrSettingsOpen, setNostrSettingsOpen] = useState(false);
-  const [isRefetching, setIsRefetching] = useState(false);
 
   const handleSave = async (payload: WishlistPayload) => {
     await addItem(payload);
@@ -69,15 +64,6 @@ const Index = () => {
   );
 
   const relayList = config.relayMetadata.relays;
-
-  const handleRefetch = async () => {
-    try {
-      setIsRefetching(true);
-      await refetch();
-    } finally {
-      setIsRefetching(false);
-    }
-  };
 
   if (!user) {
     return (
@@ -109,25 +95,6 @@ const Index = () => {
             <p className="text-sm text-white/60 mt-1">Deine Bitcoin Wunschliste</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefetch}
-              disabled={isRefetching}
-              className="text-white border-white/20"
-            >
-              <RefreshCcw className={`w-4 h-4 mr-2 ${isRefetching ? 'animate-spin' : ''}`} />
-              Aktualisieren
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setNostrSettingsOpen(true)}
-              className="text-white"
-            >
-              <SlidersHorizontal className="w-4 h-4 mr-2" />
-              Relays
-            </Button>
             <LoginArea className="max-w-60" />
           </div>
         </div>
@@ -150,7 +117,7 @@ const Index = () => {
           <CardContent>
             <div className="flex gap-2">
               <Input
-                placeholder="https://amazon.de/produkt..."
+                placeholder="https://shopinbit.com/produkt..."
                 value={importUrl}
                 onChange={(e) => setImportUrl(e.target.value)}
                 className="bg-white/10 text-white border-white/20 placeholder:text-white/40"
@@ -217,7 +184,12 @@ const Index = () => {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {wishlist.map((item) => (
-              <WishlistCard key={item.id} item={item} bitcoinPrice={priceData} />
+              <WishlistCard
+                key={item.id}
+                item={item}
+                bitcoinPrice={priceData}
+                onDelete={deleteItem}
+              />
             ))}
           </div>
         )}
@@ -309,22 +281,12 @@ const Index = () => {
       </div>
 
       {/* Dialogs */}
-      <AddProductDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        onSave={handleSave}
-        priceData={priceData}
-      />
       <ProductImportDialog
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         onSave={handleSave}
         priceData={priceData}
         initialUrl={importUrl}
-      />
-      <NostrSettingsDialog
-        open={nostrSettingsOpen}
-        onOpenChange={setNostrSettingsOpen}
       />
     </div>
   );

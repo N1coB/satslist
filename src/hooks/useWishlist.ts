@@ -166,6 +166,36 @@ export function useWishlist(options?: UseWishlistOptions) {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      if (!user) throw new Error('Not logged in');
+
+      // Create a deletion event with kind 5 (Event Deletion)
+      const deleteEvent = {
+        kind: 5,
+        content: 'Deleted wishlist item',
+        tags: [
+          ['a', `${WISHLIST_KIND}:${user.pubkey}:${itemId}`],
+        ],
+        created_at: Math.floor(Date.now() / 1000),
+        pubkey: user.pubkey,
+      };
+
+      const signed = await user.signer.signEvent(deleteEvent as NostrEvent);
+      await nostr.event(signed, { signal: AbortSignal.timeout(5000) });
+      return signed;
+    },
+    onSuccess: () => {
+      logRelay('Delete succeeded');
+      queryResult.refetch();
+    },
+    onError: (error) => {
+      console.error('Wishlist delete failed', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logRelay(`Delete failed: ${message}`);
+    },
+  });
+
   const wishlist: WishlistItem[] = useMemo(() => queryResult.data ?? [], [queryResult.data]);
 
   const stats = useMemo(() => {
@@ -184,6 +214,7 @@ export function useWishlist(options?: UseWishlistOptions) {
     wishlist,
     stats,
     addItem: mutationResult.mutateAsync,
+    deleteItem: deleteMutation.mutateAsync,
     publishStatus: {
       status: mutationResult.status,
       error: lastPublishError,
