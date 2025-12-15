@@ -187,7 +187,7 @@ const Index = () => {
             <span className="text-[11px] text-white/60">{wishlist.length} Events</span>
           </div>
           <p className="text-[11px] text-white/80">
-            Die Liste zeigt die rohen Kind-30078-Events. Falls kein Event angezeigt wird, überprüfe, ob dein Relay-Set gelesen werden kann und ob deine Wallet (z. B. Alby) Lese-/Schreibrechte erteilt hat.
+            Die Liste zeigt die rohen Kind-30078-Events. Falls kein Event angezeigt wird, überprüfe, ob dein Relay-Set gelesen werden kann und ob deine Wallet (z. B. Alby) Lese-/Schreibrechte erteilt hat.
           </p>
           <pre className="max-h-36 overflow-auto rounded-xl border border-white/10 bg-white/5 p-2 text-[11px] leading-relaxed text-white">
             {JSON.stringify(debugEvents, null, 2)}
