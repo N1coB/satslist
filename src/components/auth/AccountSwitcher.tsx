@@ -1,8 +1,5 @@
-// NOTE: This file is stable and usually should not be modified.
-// It is important that all functionality in this file is preserved, and should only be modified if explicitly requested.
-
-import { ChevronDown, LogOut, Settings2, UserIcon, UserPlus, Wallet } from 'lucide-react';
-import { useState } from 'react';
+import React from 'react';
+import { ChevronDown, LogOut, SlidersHorizontal, UserIcon, UserPlus, Wallet } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +19,7 @@ interface AccountSwitcherProps {
 
 export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
   const { currentUser, otherUsers, setLogin, removeLogin } = useLoggedInAccounts();
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   if (!currentUser) return null;
 
@@ -77,7 +74,7 @@ export function AccountSwitcher({ onAddAccountClick }: AccountSwitcherProps) {
             className='flex items-center gap-2 cursor-pointer p-2 rounded-md'
             onClick={() => setSettingsOpen(true)}
           >
-            <Settings2 className='w-4 h-4' />
+            <SlidersHorizontal className='w-4 h-4' />
             <span>Nostr Settings</span>
           </DropdownMenuItem>
           <DropdownMenuItem
