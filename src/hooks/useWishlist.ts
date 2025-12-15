@@ -1,6 +1,6 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useCurrentUser } from './useCurrentUser';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { WishlistItem, type WishlistPayload } from '@/types/wishlist';
@@ -64,6 +64,8 @@ const parseWishlistEvent = (event: NostrEvent): WishlistItem | null => {
 export function useWishlist() {
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
+  const [lastPublishError, setLastPublishError] = useState<string | null>(null);
+  const [lastPublishSuccess, setLastPublishSuccess] = useState<number | null>(null);
 
   const queryResult = useQuery({
     queryKey: ['wishlist', user?.pubkey],
@@ -99,7 +101,14 @@ export function useWishlist() {
       return signed;
     },
     onSuccess: () => {
+      setLastPublishError(null);
+      setLastPublishSuccess(Date.now());
       queryResult.refetch();
+    },
+    onError: (error) => {
+      console.error('Wishlist publish failed', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setLastPublishError(message);
     },
   });
 
@@ -121,5 +130,10 @@ export function useWishlist() {
     wishlist,
     stats,
     addItem: mutationResult.mutateAsync,
+    publishStatus: {
+      status: mutationResult.status,
+      error: lastPublishError,
+      lastSuccessAt: lastPublishSuccess,
+    },
   };
 }

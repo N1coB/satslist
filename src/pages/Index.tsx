@@ -26,7 +26,7 @@ const Index = () => {
   });
 
   const { user } = useCurrentUser();
-  const { wishlist, stats, addItem, isLoading } = useWishlist();
+  const { wishlist, stats, addItem, isLoading, publishStatus } = useWishlist();
   const { data: priceData } = useBitcoinPrice();
   const { config } = useAppContext();
 
@@ -184,18 +184,31 @@ const Index = () => {
           <pre className="max-h-36 overflow-auto rounded-xl border border-white/10 bg-white/5 p-2 text-[11px] leading-relaxed text-white">
             {JSON.stringify(debugEvents, null, 2)}
           </pre>
+          <div className="text-[11px] text-white/80 space-y-1">
+            <p className="text-white/60">Relays & Rechte</p>
+            {relayList.map((relay) => (
+              <div key={relay.url} className="flex items-center justify-between text-[11px]">
+                <span className="truncate">{relay.url}</span>
+                <span className="text-white/60">
+                  {relay.read ? 'R' : '-'} / {relay.write ? 'W' : '-'}
+                </span>
+              </div>
+            ))}
+          </div>
           <div className="text-[11px] text-white/80">
-            <p className="mb-1 text-white/60">Relays & Rechte</p>
-            <ul className="space-y-1">
-              {relayList.map((relay) => (
-                <li key={relay.url} className="flex items-center justify-between text-[11px]">
-                  <span className="truncate">{relay.url}</span>
-                  <span className="text-white/60">
-                    {relay.read ? 'R' : '-'} / {relay.write ? 'W' : '-'}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <p className="mb-1 text-white/60">Publizieren</p>
+            <p>
+              Status: <span className="font-semibold text-white/80">{publishStatus.status}</span>
+            </p>
+            <p>
+              Letzter Erfolg:{' '}
+              <span className="font-semibold text-white/80">
+                {publishStatus.lastSuccessAt ? new Date(publishStatus.lastSuccessAt).toLocaleTimeString() : 'n/a'}
+              </span>
+            </p>
+            {publishStatus.error && (
+              <p className="text-xs text-destructive">Fehler: {publishStatus.error}</p>
+            )}
           </div>
         </div>
 
