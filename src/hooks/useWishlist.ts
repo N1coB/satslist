@@ -9,6 +9,12 @@ const WISHLIST_KIND = 30078;
 
 type UnsignedWishlistEvent = Omit<NostrEvent, 'id' | 'sig'>;
 
+interface UseWishlistOptions {
+  logRelay?: (message: string) => void;
+}
+
+const noOpLog = () => {};
+
 const buildEvent = (pubkey: string, payload: WishlistPayload): UnsignedWishlistEvent => {
   const tags: [string, string][] = [
     ['d', 'satslist-wishlist'],
@@ -61,7 +67,8 @@ const parseWishlistEvent = (event: NostrEvent): WishlistItem | null => {
   }
 };
 
-export function useWishlist() {
+export function useWishlist(options?: UseWishlistOptions) {
+  const logRelay = options?.logRelay ?? noOpLog;
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
   const [lastPublishError, setLastPublishError] = useState<string | null>(null);
@@ -73,6 +80,7 @@ export function useWishlist() {
     queryFn: async ({ signal }) => {
       if (!user) return [];
 
+      logRelay('Querying wishlist events...');
       const events = await nostr.query([
         {
           kinds: [WISHLIST_KIND],
@@ -81,6 +89,8 @@ export function useWishlist() {
           limit: 100,
         },
       ], { signal });
+
+      logRelay(`Queried ${events.length} events`);
 
       return events.reduce<WishlistItem[]>((acc, event) => {
         const parsed = parseWishlistEvent(event);
@@ -103,12 +113,14 @@ export function useWishlist() {
     onSuccess: () => {
       setLastPublishError(null);
       setLastPublishSuccess(Date.now());
+      logRelay('Publish succeeded');
       queryResult.refetch();
     },
     onError: (error) => {
       console.error('Wishlist publish failed', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       setLastPublishError(message);
+      logRelay(`Publish failed: ${message}`);
     },
   });
 

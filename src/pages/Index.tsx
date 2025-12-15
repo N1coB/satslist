@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useSeoMeta } from '@unhead/react';
 import { Plus, Zap } from 'lucide-react';
 
@@ -25,11 +25,15 @@ const Index = () => {
     description: 'Verwalte deine Wunschliste mit Bitcoin. Setze Zielpreise in Sats, verfolge deinen Fortschritt und erhalte Alerts wenn der Preis stimmt.',
   });
 
-  const { user } = useCurrentUser();
-  const { wishlist, stats, addItem, isLoading, publishStatus } = useWishlist();
-  const { data: priceData } = useBitcoinPrice();
   const { config } = useAppContext();
+  const [relayLog, setRelayLog] = useState<string[]>([]);
+  const logRelay = useCallback((message: string) => {
+    setRelayLog((prev) => [message, ...prev].slice(0, 20));
+  }, []);
 
+  const { user } = useCurrentUser();
+  const { wishlist, stats, addItem, isLoading, publishStatus } = useWishlist({ logRelay });
+  const { data: priceData } = useBitcoinPrice();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importUrl, setImportUrl] = useState('');
@@ -174,42 +178,77 @@ const Index = () => {
         )}
 
         <div className="rounded-2xl border border-white/20 bg-black/40 p-4 text-white/80 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs uppercase tracking-[0.4em] text-white/60">Debug Info</p>
-            <span className="text-[11px] text-white/60">{wishlist.length} Events</span>
+          <div className="flex items-center justify-between text-xs uppercase tracking-[0.35em] text-white/60">
+            <span>Debug Info</span>
+            <span>{wishlist.length} Events</span>
           </div>
-          <p className="text-[11px] text-white/80">
-            Die Liste zeigt die rohen Kind-30078-Events. Falls kein Event angezeigt wird, überprüfe, ob dein Relay-Set gelesen werden kann und ob deine Wallet (z. b. Alby) Lese-/Schreibrechte erteilt hat.
-          </p>
+          <div className="text-[11px] text-white/80">
+            <p className="text-white/60">
+              Die Liste zeigt die rohen Kind-30078-Events. Falls kein Event angezeigt wird, überprüfe, ob dein Relay-Set gelesen werden kann und ob deine Wallet (z. b. Alby) Lese-/Schreibrechte erteilt hat.
+            </p>
+          </div>
           <pre className="max-h-36 overflow-auto rounded-xl border border-white/10 bg-white/5 p-2 text-[11px] leading-relaxed text-white">
             {JSON.stringify(debugEvents, null, 2)}
           </pre>
-          <div className="text-[11px] text-white/80 space-y-1">
-            <p className="text-white/60">Relays & Rechte</p>
-            {relayList.map((relay) => (
-              <div key={relay.url} className="flex items-center justify-between text-[11px]">
-                <span className="truncate">{relay.url}</span>
-                <span className="text-white/60">
-                  {relay.read ? 'R' : '-'} / {relay.write ? 'W' : '-'}
-                </span>
-              </div>
+          <div className="space-y-1 text-[11px] text-white/80">
+            <p className="text-white/60">Relay Log (letzte 10)</p>
+            {relayLog.map((line) => (
+              <p key={line} className="truncate text-xs text-white/70">
+                {line}
+              </p>
             ))}
           </div>
-          <div className="text-[11px] text-white/80">
-            <p className="mb-1 text-white/60">Publizieren</p>
-            <p>
-              Status: <span className="font-semibold text-white/80">{publishStatus.status}</span>
-            </p>
-            <p>
-              Letzter Erfolg:{' '}
-              <span className="font-semibold text-white/80">
-                {publishStatus.lastSuccessAt ? new Date(publishStatus.lastSuccessAt).toLocaleTimeString() : 'n/a'}
-              </span>
-            </p>
-            {publishStatus.error && (
-              <p className="text-xs text-destructive">Fehler: {publishStatus.error}</p>
-            )}
+          <div className="space-y-2">
+            <div className="text-[11px] text-white/80 space-y-1">
+              <p className="text-white/60">Relays & Rechte</p>
+              {relayList.map((relay) => (
+                <div key={relay.url} className="flex items-center justify-between text-[11px]">
+                  <span className="truncate">{relay.url}</span>
+                  <span className="text-white/60">
+                    {relay.read ? 'R' : '-'} / {relay.write ? 'W' : '-'}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="text-[11px] text-white/80">
+              <p className="mb-1 text-white/60">Publizieren</p>
+              <p>
+                Status: <span className="font-semibold text-white/80">{publishStatus.status}</span>
+              </p>
+              <p>
+                Letzter Erfolg:{' '}
+                <span className="font-semibold text-white/80">
+                  {publishStatus.lastSuccessAt ? new Date(publishStatus.lastSuccessAt).toLocaleTimeString() : 'n/a'}
+                </span>
+              </p>
+              {publishStatus.error && (
+                <p className="text-xs text-destructive">Fehler: {publishStatus.error}</p>
+              )}
+            </div>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const blob = new Blob([
+                JSON.stringify({
+                  events: debugEvents,
+                  relays: relayList,
+                  publishStatus,
+                }, null, 2),
+              ], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'satslist-debug.json';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            }}
+          >
+            Debug exportieren
+          </Button>
         </div>
 
         <footer className="pt-8 text-center text-xs text-white/40">
