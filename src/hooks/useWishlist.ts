@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNostr } from '@nostrify/react';
 import { useCurrentUser } from './useCurrentUser';
@@ -11,6 +11,9 @@ const RATE_LIMIT_DELAY = 2000;
 const STORAGE_KEY = 'satslist-deleted-items';
 const CLEANUP_THRESHOLD = 200;
 const CLEANUP_TARGET = 100;
+const FILTER_EVENT_KIND = 17779;
+const FILTER_EVENT_TAG = 'satslist-wishlist-deleted';
+const FILTER_EVENT_D_TAG = 'deleted-list';
 
 let queryQueue: Promise<unknown> = Promise.resolve();
 let lastQueryTime = 0;
@@ -29,6 +32,9 @@ async function enqueueQuery<T>(fn: () => Promise<T>, log?: (message: string) => 
 
   return queryQueue as Promise<T>;
 }
+
+const sortIds = (ids: string[]): string[] => ids.slice().sort();
+const areSameIdList = (a: string[], b: string[]) => a.length === b.length && a.every((value, index) => value === b[index]);
 
 const buildEvent = (pubkey: string, payload: WishlistPayload): Omit<NostrEvent, 'id' | 'sig'> => {
   const itemId = payload.id ?? crypto.randomUUID();
@@ -86,6 +92,26 @@ const parseWishlistEvent = (event: NostrEvent): WishlistItem | null => {
   }
 };
 
+const parseFilterEventIds = (event?: NostrEvent): string[] => {
+  if (!event) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(event.content);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return Array.from(new Set(parsed.filter((value): value is string => typeof value === 'string')));
+  } catch (error) {
+    console.warn('Failed to parse filter event', event, error);
+    return [];
+  }
+};
+
+const noOpLog = () => {};
+
 const loadDeletedIds = () => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -108,8 +134,6 @@ interface UseWishlistOptions {
   logRelay?: (message: string) => void;
 }
 
-const noOpLog = () => {};
-
 export function useWishlist(options?: UseWishlistOptions) {
   const logRelay = options?.logRelay ?? noOpLog;
   const { nostr } = useNostr();
@@ -118,18 +142,18 @@ export function useWishlist(options?: UseWishlistOptions) {
   const [lastPublishError, setLastPublishError] = useState<string | null>(null);
   const [lastPublishSuccess, setLastPublishSuccess] = useState<number | null>(null);
   const [rateLimitWarning, setRateLimitWarning] = useState<string | null>(null);
-
   const [deletedIds, setDeletedIds] = useState<Set<string>>(() => loadDeletedIds());
+  const lastPublishedIdsRef = useRef<string[]>([]);
+  const publishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (deletedIds.size > CLEANUP_THRESHOLD) {
       setDeletedIds(prev => {
-        const ids = Array.from(prev).slice(-CLEANUP_TARGET);
-        return new Set(ids);
+        const trimmed = Array.from(prev).slice(-CLEANUP_TARGET);
+        return new Set(trimmed);
       });
       return;
     }
-
     persistDeletedIds(deletedIds);
   }, [deletedIds]);
 
@@ -260,6 +284,89 @@ export function useWishlist(options?: UseWishlistOptions) {
       }
     },
   });
+
+  const filterEventQuery = useQuery({
+    queryKey: ['wishlist-filter-event', user?.pubkey],
+    enabled: Boolean(user),
+    queryFn: async ({ signal }) => {
+      if (!user) return [];
+
+      const filters = [
+        {
+          kinds: [FILTER_EVENT_KIND],
+          authors: [user.pubkey],
+          '#t': [FILTER_EVENT_TAG],
+          limit: 1,
+        },
+      ];
+
+      return enqueueQuery(() => nostr.query(filters, { signal }), logRelay);
+    },
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
+
+  const latestFilterEvent = filterEventQuery.data?.[0];
+
+  useEffect(() => {
+    if (!latestFilterEvent) return;
+
+    const ids = parseFilterEventIds(latestFilterEvent);
+    lastPublishedIdsRef.current = sortIds(ids);
+    setDeletedIds(new Set(ids));
+  }, [latestFilterEvent?.id, user?.pubkey]);
+
+  const filterEventMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      if (!user) throw new Error('Not logged in');
+
+      const event = {
+        kind: FILTER_EVENT_KIND,
+        content: JSON.stringify(ids),
+        tags: [
+          ['t', FILTER_EVENT_TAG],
+          ['d', FILTER_EVENT_D_TAG],
+        ],
+        created_at: Math.floor(Date.now() / 1000),
+        pubkey: user.pubkey,
+      };
+
+      const signed = await user.signer.signEvent(event as NostrEvent);
+      await nostr.event(signed, { signal: AbortSignal.timeout(5000) });
+      return ids;
+    },
+    onSuccess: (_, ids) => {
+      lastPublishedIdsRef.current = sortIds(ids);
+      logRelay('Filter list published');
+    },
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logRelay(`Filter list publish failed: ${message}`);
+    },
+  });
+
+  useEffect(() => {
+    if (!user) return;
+
+    const ids = sortIds(Array.from(deletedIds));
+    if (areSameIdList(ids, lastPublishedIdsRef.current)) {
+      return;
+    }
+
+    if (publishTimerRef.current) {
+      clearTimeout(publishTimerRef.current);
+    }
+
+    publishTimerRef.current = setTimeout(() => {
+      filterEventMutation.mutate(ids);
+    }, 2000);
+
+    return () => {
+      if (publishTimerRef.current) {
+        clearTimeout(publishTimerRef.current);
+      }
+    };
+  }, [deletedIds, filterEventMutation, user?.pubkey]);
 
   const rawWishlist: WishlistItem[] = useMemo(() => queryResult.data ?? [], [queryResult.data]);
   const wishlist: WishlistItem[] = useMemo(
