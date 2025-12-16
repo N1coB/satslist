@@ -8,6 +8,9 @@ import { WishlistItem, type WishlistPayload } from '@/types/wishlist';
 const WISHLIST_KIND = 30078;
 const COMMUNITY_TAG = 'satslist-wishlist';
 const RATE_LIMIT_DELAY = 2000;
+const STORAGE_KEY = 'satslist-deleted-items';
+const CLEANUP_THRESHOLD = 200;
+const CLEANUP_TARGET = 100;
 
 let queryQueue: Promise<unknown> = Promise.resolve();
 let lastQueryTime = 0;
@@ -27,15 +30,7 @@ async function enqueueQuery<T>(fn: () => Promise<T>, log?: (message: string) => 
   return queryQueue as Promise<T>;
 }
 
-type UnsignedWishlistEvent = Omit<NostrEvent, 'id' | 'sig'>;
-
-interface UseWishlistOptions {
-  logRelay?: (message: string) => void;
-}
-
-const noOpLog = () => {};
-
-const buildEvent = (pubkey: string, payload: WishlistPayload): UnsignedWishlistEvent => {
+const buildEvent = (pubkey: string, payload: WishlistPayload): Omit<NostrEvent, 'id' | 'sig'> => {
   const itemId = payload.id ?? crypto.randomUUID();
   const tags: [string, string][] = [
     ['d', itemId],
@@ -91,6 +86,30 @@ const parseWishlistEvent = (event: NostrEvent): WishlistItem | null => {
   }
 };
 
+const loadDeletedIds = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
+  } catch (error) {
+    console.warn('Failed to load deleted wishlist IDs', error);
+    return new Set<string>();
+  }
+};
+
+const persistDeletedIds = (ids: Set<string>) => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(ids)));
+  } catch (error) {
+    console.warn('Failed to persist deleted wishlist IDs', error);
+  }
+};
+
+interface UseWishlistOptions {
+  logRelay?: (message: string) => void;
+}
+
+const noOpLog = () => {};
+
 export function useWishlist(options?: UseWishlistOptions) {
   const logRelay = options?.logRelay ?? noOpLog;
   const { nostr } = useNostr();
@@ -100,25 +119,24 @@ export function useWishlist(options?: UseWishlistOptions) {
   const [lastPublishSuccess, setLastPublishSuccess] = useState<number | null>(null);
   const [rateLimitWarning, setRateLimitWarning] = useState<string | null>(null);
 
-  // Local deletion filter - persisted in localStorage
-  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem('satslist-deleted-items');
-      return stored ? new Set(JSON.parse(stored)) : new Set();
-    } catch {
-      return new Set();
-    }
-  });
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => loadDeletedIds());
 
-  // Persist deleted IDs to localStorage whenever they change
-  const updateDeletedIds = useCallback((updateFn: (prev: Set<string>) => Set<string>) => {
+  useEffect(() => {
+    if (deletedIds.size > CLEANUP_THRESHOLD) {
+      setDeletedIds(prev => {
+        const ids = Array.from(prev).slice(-CLEANUP_TARGET);
+        return new Set(ids);
+      });
+      return;
+    }
+
+    persistDeletedIds(deletedIds);
+  }, [deletedIds]);
+
+  const addDeletedId = useCallback((itemId: string) => {
     setDeletedIds(prev => {
-      const updated = updateFn(prev);
-      try {
-        localStorage.setItem('satslist-deleted-items', JSON.stringify(Array.from(updated)));
-      } catch (e) {
-        console.warn('Failed to persist deleted items', e);
-      }
+      const updated = new Set(prev);
+      updated.add(itemId);
       return updated;
     });
   }, []);
@@ -153,10 +171,7 @@ export function useWishlist(options?: UseWishlistOptions) {
           return acc;
         }, new Map());
 
-        // Filter out locally deleted items
-        const filtered = Array.from(map.values()).filter(item => !deletedIds.has(item.id));
-
-        return filtered.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+        return Array.from(map.values()).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         logRelay(`Query failed: ${message}`);
@@ -197,7 +212,6 @@ export function useWishlist(options?: UseWishlistOptions) {
     mutationFn: async (itemId: string) => {
       if (!user) throw new Error('Not logged in');
 
-      // Create a deletion event with kind 5 (Event Deletion)
       const deleteEvent = {
         kind: 5,
         content: 'Deleted wishlist item',
@@ -213,20 +227,12 @@ export function useWishlist(options?: UseWishlistOptions) {
       return { itemId, event: signed };
     },
     onMutate: async (itemId: string) => {
-      // Cancel outgoing refetches to avoid race conditions
       await queryClient.cancelQueries({ queryKey: ['wishlist', user?.pubkey] });
 
-      // Add to local deletion set using the new persistence function
-      updateDeletedIds(prev => {
-        const updated = new Set(prev);
-        updated.add(itemId);
-        return updated;
-      });
+      addDeletedId(itemId);
 
-      // Snapshot the previous value
       const previousWishlist = queryClient.getQueryData<WishlistItem[]>(['wishlist', user?.pubkey]);
 
-      // Optimistically remove the item
       if (previousWishlist) {
         const updated = previousWishlist.filter(item => item.id !== itemId);
         queryClient.setQueryData(['wishlist', user?.pubkey], updated);
@@ -236,8 +242,6 @@ export function useWishlist(options?: UseWishlistOptions) {
     },
     onSuccess: () => {
       logRelay('Delete succeeded');
-      // Refetch to ensure consistency with relays (but deleted items will still be filtered)
-      // We delay the refetch slightly to give relays time to process the deletion
       setTimeout(() => queryResult.refetch(), 3000);
     },
     onError: (error, itemId, context) => {
@@ -245,48 +249,23 @@ export function useWishlist(options?: UseWishlistOptions) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       logRelay(`Delete failed: ${message}`);
 
-      // Rollback on error - remove from local deletion set using the new persistence function
-      updateDeletedIds(prev => {
+      setDeletedIds(prev => {
         const updated = new Set(prev);
         updated.delete(itemId);
         return updated;
       });
 
-      // Rollback UI
       if (context?.previousWishlist) {
         queryClient.setQueryData(['wishlist', user?.pubkey], context.previousWishlist);
       }
     },
   });
 
-  const wishlist: WishlistItem[] = useMemo(() => queryResult.data ?? [], [queryResult.data]);
-
-  // Cleanup old deleted IDs periodically to prevent localStorage bloat
-  // Keep IDs for 7 days, then remove them
-  const cleanupOldDeletedIds = useCallback(() => {
-    updateDeletedIds(prev => {
-      // If we have less than 100 deleted items, no need to clean up
-      if (prev.size < 100) return prev;
-
-      // Create a new set that expires old entries
-      // Since we only store IDs, we can't track timestamps
-      // Instead, we'll keep a reasonable cap on the number of stored IDs
-      const ids = Array.from(prev);
-      if (ids.length > 200) {
-        // Keep only the most recent 100 entries
-        const recentIds = ids.slice(-100);
-        return new Set(recentIds);
-      }
-      return prev;
-    });
-  }, [updateDeletedIds]);
-
-  // Run cleanup when wishlist data loads
-  useEffect(() => {
-    if (wishlist.length > 0) {
-      cleanupOldDeletedIds();
-    }
-  }, [wishlist.length, cleanupOldDeletedIds]);
+  const rawWishlist: WishlistItem[] = useMemo(() => queryResult.data ?? [], [queryResult.data]);
+  const wishlist: WishlistItem[] = useMemo(
+    () => rawWishlist.filter(item => !deletedIds.has(item.id)),
+    [deletedIds, rawWishlist]
+  );
 
   const stats = useMemo(() => {
     const totalTarget = wishlist.reduce((sum, item) => sum + item.targetPriceSats, 0);
@@ -317,8 +296,8 @@ export function useWishlist(options?: UseWishlistOptions) {
     rateLimitWarning,
     refetch: queryResult.refetch,
     clearDeletedItems: () => {
-      localStorage.removeItem('satslist-deleted-items');
+      localStorage.removeItem(STORAGE_KEY);
       setDeletedIds(new Set());
-    }
+    },
   };
 }
