@@ -48,12 +48,10 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
             e.stopPropagation();
             onDelete?.(item.id);
           }}
-          className="absolute top-2 right-2 text-white/40 hover:text-red-400 hover:bg-red-500/10 z-10"
+          className="absolute top-2 right-2 text-white/40 hover:text-red-400 hover:bg-red-500/10 z-20"
         >
           <Trash2 className="w-4 h-4" />
         </Button>
-        {/* Visual indicator for deleted items */}
-        <div className="absolute inset-0 bg-red-500/5 backdrop-blur-sm rounded-lg opacity-0 hover:opacity-100 transition-opacity pointer-events-none z-0"></div>
         <CardHeader className="space-y-3 relative z-10">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 cursor-pointer" onClick={() => setDetailsOpen(true)}>
