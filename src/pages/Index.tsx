@@ -207,7 +207,7 @@ const Index = () => {
         )}
 
         {/* Delete Notice */}
-        {deleteMutation.status === 'pending' && (
+        {deleteStatus.status === 'pending' && (
           <Card className="bg-orange-500/10 border-orange-500/30">
             <CardContent className="py-3">
               <p className="text-sm text-orange-300">

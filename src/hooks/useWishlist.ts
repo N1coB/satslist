@@ -1,6 +1,6 @@
-import { useNostr } from '@nostrify/react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useNostr } from '@nostrify/react';
 import { useCurrentUser } from './useCurrentUser';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { WishlistItem, type WishlistPayload } from '@/types/wishlist';
@@ -282,7 +282,7 @@ export function useWishlist(options?: UseWishlistOptions) {
   }, [updateDeletedIds]);
 
   // Run cleanup when wishlist data loads
-  React.useEffect(() => {
+  useEffect(() => {
     if (wishlist.length > 0) {
       cleanupOldDeletedIds();
     }
