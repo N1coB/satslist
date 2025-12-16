@@ -40,7 +40,7 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
 
   return (
     <>
-      <Card className="group w-full max-w-full bg-gradient-to-br from-slate-900/70 to-slate-900/40 border border-white/10 shadow-xl shadow-orange-600/30 relative overflow-hidden">
+      <Card className="group bg-white/3 border-white/10 shadow-2xl shadow-orange-600/30 relative">
         <Button
           variant="ghost"
           size="sm"
@@ -48,14 +48,14 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
             e.stopPropagation();
             onDelete?.(item.id);
           }}
-          className="absolute top-2 right-2 text-white/70 hover:text-red-400 hover:bg-red-500/10 z-20"
+          className="absolute top-2 right-2 text-white/40 hover:text-red-400 hover:bg-red-500/10 z-20"
         >
           <Trash2 className="w-4 h-4" />
         </Button>
         <CardHeader className="space-y-3 relative z-10">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setDetailsOpen(true)}>
-              <CardTitle className="text-lg font-semibold text-white leading-tight hover:text-orange-300 transition-colors">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 cursor-pointer" onClick={() => setDetailsOpen(true)}>
+              <CardTitle className="text-lg font-bold text-white leading-tight hover:text-orange-300 transition-colors">
                 {item.title}
               </CardTitle>
               {item.link && (
@@ -63,7 +63,7 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
                   href={item.link}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-orange-300 hover:text-orange-200 mt-1"
+                  className="inline-flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 mt-1"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Link2 className="w-3 h-3" />
@@ -72,68 +72,65 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
               )}
             </div>
             {isReady && (
-              <Badge
-                variant="secondary"
-                className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 text-xs font-semibold"
-              >
+              <Badge variant="secondary" className="bg-green-500/20 text-green-300 border-green-500/30 text-xs font-semibold">
                 <Sparkles className="w-3 h-3 mr-1" />
                 Bereit!
               </Badge>
             )}
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            {item.image && (
-              <div
-                className="h-24 w-full sm:w-24 rounded-xl bg-gradient-to-br from-orange-500/20 via-orange-400/10 to-transparent p-1 flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
-                onClick={() => setDetailsOpen(true)}
-              >
-                <img
-                  src={item.image}
-                  alt={item.title}
-                  className="h-full w-full rounded-lg object-cover border border-white/10"
-                  loading="lazy"
-                />
-              </div>
-            )}
-            <div className="flex-1 space-y-2">
-              <div>
-                <p className="text-xs text-white/60">Zielpreis</p>
-                <p className="text-2xl font-bold text-white">
-                  {targetPriceEUR !== undefined ? formatEuros(targetPriceEUR) : '—'}
-                </p>
-                <p className="text-xs text-white/50">
-                  {formatSats(targetPriceSats)} sats
-                </p>
-                {currentPriceEUR && currentPriceEUR !== targetPriceEUR && (
-                  <p className="text-xs text-white/40 mt-1">
-                    Aktuell: {formatEuros(currentPriceEUR)}
-                  </p>
-                )}
-              </div>
-              {item.source && (
-                <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-orange-200/80">
-                  <Bookmark className="w-3 h-3" />
-                  {item.source}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Fortschrittsbalken auf Karte */}
-          {currentPriceEUR && targetPriceEUR && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-white/60">Rabatt-Fortschritt</span>
-                <span className="text-white font-semibold">{Math.round(progress)}%</span>
-              </div>
-              <Progress value={progress} className="h-2 rounded-full bg-white/10" />
-              <div className="flex justify-between text-[10px] text-white/50">
-                <span>Aktuell: {formatEuros(currentPriceEUR)}</span>
-                <span>Ziel: {formatEuros(targetPriceEUR)}</span>
-              </div>
+        <div className="flex items-start gap-4">
+          {item.image && (
+            <div
+              className="h-20 w-20 rounded-xl bg-gradient-to-br from-orange-500/20 via-orange-400/10 to-transparent p-1 flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
+              onClick={() => setDetailsOpen(true)}
+            >
+              <img
+                src={item.image}
+                alt={item.title}
+                className="h-full w-full rounded-lg object-cover border border-white/10"
+                loading="lazy"
+              />
             </div>
           )}
-        </CardHeader>
+          <div className="space-y-2 flex-1">
+            <div>
+              <p className="text-xs text-white/60">Zielpreis</p>
+              <p className="text-2xl font-bold text-white">
+                {targetPriceEUR !== undefined ? formatEuros(targetPriceEUR) : '—'}
+              </p>
+              <p className="text-xs text-white/50">
+                {formatSats(targetPriceSats)} sats
+              </p>
+              {currentPriceEUR && currentPriceEUR !== targetPriceEUR && (
+                <p className="text-xs text-white/40 mt-1">
+                  Aktuell: {formatEuros(currentPriceEUR)}
+                </p>
+              )}
+            </div>
+            {item.source && (
+              <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-orange-300/80">
+                <Bookmark className="w-3 h-3" />
+                {item.source}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Fortschrittsbalken auf Karte */}
+        {currentPriceEUR && targetPriceEUR && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-white/60">Rabatt-Fortschritt</span>
+              <span className="text-white font-semibold">{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} className="h-2 rounded-full bg-white/10" />
+            <div className="flex justify-between text-[10px] text-white/50">
+              <span>Aktuell: {formatEuros(currentPriceEUR)}</span>
+              <span>Ziel: {formatEuros(targetPriceEUR)}</span>
+            </div>
+          </div>
+        )}
+      </CardHeader>
       {item.notes && (
         <CardContent className="space-y-2 pt-4">
           <p className="text-[10px] uppercase text-orange-300/60 tracking-wider">Notizen</p>
