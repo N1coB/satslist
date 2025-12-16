@@ -1,6 +1,6 @@
 import { useNostr } from '@nostrify/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useCurrentUser } from './useCurrentUser';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { WishlistItem, type WishlistPayload } from '@/types/wishlist';
@@ -100,6 +100,29 @@ export function useWishlist(options?: UseWishlistOptions) {
   const [lastPublishSuccess, setLastPublishSuccess] = useState<number | null>(null);
   const [rateLimitWarning, setRateLimitWarning] = useState<string | null>(null);
 
+  // Local deletion filter - persisted in localStorage
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('satslist-deleted-items');
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  // Persist deleted IDs to localStorage whenever they change
+  const updateDeletedIds = useCallback((updateFn: (prev: Set<string>) => Set<string>) => {
+    setDeletedIds(prev => {
+      const updated = updateFn(prev);
+      try {
+        localStorage.setItem('satslist-deleted-items', JSON.stringify(Array.from(updated)));
+      } catch (e) {
+        console.warn('Failed to persist deleted items', e);
+      }
+      return updated;
+    });
+  }, []);
+
   const queryResult = useQuery({
     queryKey: ['wishlist', user?.pubkey],
     enabled: Boolean(user),
@@ -130,7 +153,10 @@ export function useWishlist(options?: UseWishlistOptions) {
           return acc;
         }, new Map());
 
-        return Array.from(map.values()).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+        // Filter out locally deleted items
+        const filtered = Array.from(map.values()).filter(item => !deletedIds.has(item.id));
+
+        return filtered.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         logRelay(`Query failed: ${message}`);
@@ -190,6 +216,13 @@ export function useWishlist(options?: UseWishlistOptions) {
       // Cancel outgoing refetches to avoid race conditions
       await queryClient.cancelQueries({ queryKey: ['wishlist', user?.pubkey] });
 
+      // Add to local deletion set using the new persistence function
+      updateDeletedIds(prev => {
+        const updated = new Set(prev);
+        updated.add(itemId);
+        return updated;
+      });
+
       // Snapshot the previous value
       const previousWishlist = queryClient.getQueryData<WishlistItem[]>(['wishlist', user?.pubkey]);
 
@@ -203,15 +236,23 @@ export function useWishlist(options?: UseWishlistOptions) {
     },
     onSuccess: () => {
       logRelay('Delete succeeded');
-      // Refetch to ensure consistency with relays
-      setTimeout(() => queryResult.refetch(), 1000);
+      // Refetch to ensure consistency with relays (but deleted items will still be filtered)
+      // We delay the refetch slightly to give relays time to process the deletion
+      setTimeout(() => queryResult.refetch(), 3000);
     },
-    onError: (error, _itemId, context) => {
+    onError: (error, itemId, context) => {
       console.error('Wishlist delete failed', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       logRelay(`Delete failed: ${message}`);
 
-      // Rollback on error
+      // Rollback on error - remove from local deletion set using the new persistence function
+      updateDeletedIds(prev => {
+        const updated = new Set(prev);
+        updated.delete(itemId);
+        return updated;
+      });
+
+      // Rollback UI
       if (context?.previousWishlist) {
         queryClient.setQueryData(['wishlist', user?.pubkey], context.previousWishlist);
       }
@@ -219,6 +260,33 @@ export function useWishlist(options?: UseWishlistOptions) {
   });
 
   const wishlist: WishlistItem[] = useMemo(() => queryResult.data ?? [], [queryResult.data]);
+
+  // Cleanup old deleted IDs periodically to prevent localStorage bloat
+  // Keep IDs for 7 days, then remove them
+  const cleanupOldDeletedIds = useCallback(() => {
+    updateDeletedIds(prev => {
+      // If we have less than 100 deleted items, no need to clean up
+      if (prev.size < 100) return prev;
+
+      // Create a new set that expires old entries
+      // Since we only store IDs, we can't track timestamps
+      // Instead, we'll keep a reasonable cap on the number of stored IDs
+      const ids = Array.from(prev);
+      if (ids.length > 200) {
+        // Keep only the most recent 100 entries
+        const recentIds = ids.slice(-100);
+        return new Set(recentIds);
+      }
+      return prev;
+    });
+  }, [updateDeletedIds]);
+
+  // Run cleanup when wishlist data loads
+  React.useEffect(() => {
+    if (wishlist.length > 0) {
+      cleanupOldDeletedIds();
+    }
+  }, [wishlist.length, cleanupOldDeletedIds]);
 
   const stats = useMemo(() => {
     const totalTarget = wishlist.reduce((sum, item) => sum + item.targetPriceSats, 0);
@@ -242,7 +310,15 @@ export function useWishlist(options?: UseWishlistOptions) {
       error: lastPublishError,
       lastSuccessAt: lastPublishSuccess,
     },
+    deleteStatus: {
+      status: deleteMutation.status,
+      error: deleteMutation.error,
+    },
     rateLimitWarning,
     refetch: queryResult.refetch,
+    clearDeletedItems: () => {
+      localStorage.removeItem('satslist-deleted-items');
+      setDeletedIds(new Set());
+    }
   };
 }

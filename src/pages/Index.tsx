@@ -35,8 +35,10 @@ const Index = () => {
     stats,
     addItem,
     deleteItem,
+    clearDeletedItems,
     isLoading,
     publishStatus,
+    deleteStatus,
     rateLimitWarning,
   } = useWishlist({ logRelay });
   const { data: priceData } = useBitcoinPrice();
@@ -166,6 +168,16 @@ const Index = () => {
                 Import
               </Button>
             </div>
+            <div className="mt-2 text-right">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearDeletedItems}
+                className="text-xs text-white/50 hover:text-white/80"
+              >
+                Gelöschte Einträge bereinigen
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -190,6 +202,26 @@ const Index = () => {
           <Card className="bg-red-500/10 border-red-500/30">
             <CardContent className="py-3">
               <p className="text-sm text-red-300">Fehler: {publishStatus.error}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Delete Notice */}
+        {deleteMutation.status === 'pending' && (
+          <Card className="bg-orange-500/10 border-orange-500/30">
+            <CardContent className="py-3">
+              <p className="text-sm text-orange-300">
+                Lösche Eintrag... (wird lokal ausgeblendet, während die endgültige Löschung bei den Relays verarbeitet wird)
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        {deleteStatus.error && (
+          <Card className="bg-red-500/10 border-red-500/30">
+            <CardContent className="py-3">
+              <p className="text-sm text-red-300">
+                Fehler beim Löschen: {(deleteStatus.error as Error)?.message || 'Unbekannter Fehler'}
+              </p>
             </CardContent>
           </Card>
         )}
