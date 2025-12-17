@@ -159,13 +159,12 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
       </CardFooter>
     </Card>
 
-    {/* Detail Dialog */}
     <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-      <DialogContent className="max-w-2xl bg-[#0c0c11] border-white/20">
+      <DialogContent className={'max-w-sm sm:max-w-lg lg:max-w-xl w-11/12 mx-auto bg-slate-900 border-white/20 p-6'}>
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold text-white pr-8">{item.title}</DialogTitle>
+          <DialogTitle className="text-2xl font-bold text-white pr-8 leading-snug">{item.title}</DialogTitle>
           {item.source && (
-            <DialogDescription className="flex items-center gap-2 text-orange-300/80">
+            <DialogDescription className="flex items-center gap-2 text-orange-200/80">
               <Bookmark className="w-4 h-4" />
               {item.source}
             </DialogDescription>
@@ -175,45 +174,48 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
         <div className="space-y-6 mt-4">
           {/* Image */}
           {item.image && (
-            <div className="w-full h-64 rounded-xl bg-gradient-to-br from-orange-500/20 via-orange-400/10 to-transparent p-2">
+            <div
+              className="h-48 w-full max-w-full rounded-xl bg-gradient-to-br from-orange-500/20 via-orange-400/10 to-transparent p-2 flex items-center justify-center"
+              onClick={() => setDetailsOpen(true)}
+            >
               <img
                 src={item.image}
                 alt={item.title}
-                className="w-full h-full rounded-lg object-contain"
+                className="max-h-full max-w-full rounded-lg object-contain border border-white/10"
                 loading="lazy"
               />
             </div>
           )}
 
           {/* Preis-Übersicht */}
-          <div className="grid gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
             {/* Zielpreis - IMMER anzeigen */}
-            <Card className="bg-gradient-to-br from-orange-500/20 to-orange-600/10 border-orange-500/30">
-              <CardHeader>
+            <Card className="bg-gradient-to-br from-orange-600/20 to-orange-700/10 border-orange-500/40 text-white p-4">
+              <CardHeader className="p-0 pb-2">
                 <p className="text-sm text-orange-200/80 mb-2">Dein Zielpreis</p>
-                <p className="text-4xl font-bold text-white">
+                <p className="text-3xl font-bold leading-tight">
                   {targetPriceEUR !== undefined ? formatEuros(targetPriceEUR) : '—'}
                 </p>
-                <p className="text-sm text-white/60 mt-2">
+                <p className="text-sm text-white/70 mt-2">
                   {formatSats(targetPriceSats)} sats
                 </p>
-                {isReady && (
-                  <div className="mt-4">
-                    <Badge className="bg-green-500/30 text-green-200 border-green-400/40 text-sm px-3 py-1">
-                      <Sparkles className="w-4 h-4 mr-1" />
-                      Ziel erreicht!
-                    </Badge>
-                  </div>
-                )}
               </CardHeader>
+              {isReady && (
+                <div className="mt-4">
+                  <Badge className="bg-emerald-500/30 text-emerald-200 border-emerald-400/40 text-sm px-3 py-1">
+                    <Sparkles className="w-4 h-4 mr-1" />
+                    Ziel erreicht!
+                  </Badge>
+                </div>
+              )}
             </Card>
 
             {/* Aktueller Preis - nur wenn vorhanden */}
             {currentPriceEUR && (
-              <Card className="bg-white/5 border-white/10">
-                <CardHeader>
+              <Card className="bg-white/5 border-white/10 text-white p-4">
+                <CardHeader className="p-0 pb-2">
                   <p className="text-sm text-white/60 mb-2">Aktueller Shop-Preis</p>
-                  <p className="text-3xl font-bold text-white">
+                  <p className="text-3xl font-bold leading-tight">
                     {formatEuros(currentPriceEUR)}
                   </p>
                   <p className="text-sm text-white/50 mt-2">
@@ -225,8 +227,8 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
 
             {/* Fortschrittsbalken - nur wenn beide Preise vorhanden */}
             {currentPriceEUR && targetPriceEUR && currentPriceEUR > targetPriceEUR && (
-              <Card className="bg-white/5 border-white/10">
-                <CardHeader>
+              <Card className="bg-white/5 border-white/10 text-white p-4">
+                <CardHeader className="p-0 pb-3">
                   <p className="text-sm text-white/60 mb-3">Rabatt-Fortschritt</p>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -250,7 +252,7 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
           {/* Notes */}
           {item.notes && (
             <div className="space-y-2">
-              <p className="text-xs uppercase text-orange-300/60 tracking-wider">Notizen</p>
+              <p className="text-xs uppercase text-orange-200/60 tracking-wider">Notizen</p>
               <p className="text-base text-white/90 leading-relaxed whitespace-pre-wrap">
                 {item.notes}
               </p>
@@ -258,25 +260,23 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
           )}
 
           {/* Link */}
-          {item.link && (
-            <Button
-              variant="default"
-              className="w-full"
-              size="lg"
-              asChild
-            >
-              <a href={item.link} target="_blank" rel="noreferrer">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Zum Produkt
-              </a>
-            </Button>
-          )}
+          <Button
+            variant="default"
+            className="w-full bg-orange-600 hover:bg-orange-500 text-white"
+            size="lg"
+            asChild
+          >
+            <a href={item.link} target="_blank" rel="noreferrer">
+              <ExternalLink className="w-4 h-4 mr-2" />
+              {item.link ? 'Zum Produkt' : 'Kein Produktlink verfügbar'}
+            </a>
+          </Button>
 
           {/* Meta */}
-          <div className="flex items-center justify-between text-xs text-white/40 pt-4 border-t border-white/10">
+          <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-white/40 pt-4 border-t border-white/10 mt-6">
             <span>Hinzugefügt am {new Date(item.createdAt * 1000).toLocaleDateString('de-DE')}</span>
             {isReady && (
-              <Badge variant="secondary" className="bg-green-500/20 text-green-300 border-green-500/30">
+              <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 mt-2 sm:mt-0">
                 <Sparkles className="w-3 h-3 mr-1" />
                 Bereit!
               </Badge>
