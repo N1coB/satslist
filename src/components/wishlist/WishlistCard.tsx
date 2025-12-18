@@ -149,7 +149,7 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
                   : `${Math.round(Math.abs(percentOvershootRelativeTarget))}% unter Ziel`}
               </span>
             </div>
-            <Progress value={progressPercentage} className="h-2 rounded-full bg-white/10" />
+            <Progress value={progressPercentage ?? 0} className="h-2 rounded-full bg-white/10" />
             <div className="flex justify-between text-[10px] text-white/50">
               <span>Aktuell: {formatSats(currentPriceSats)} sats</span>
               <span className={satsDifference < 0 ? "text-emerald-400 font-semibold" : "text-orange-400 font-semibold"}>
@@ -264,7 +264,7 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
                       <span className="text-sm text-white/70">Benötigte Reduktion</span>
                       <span className="text-2xl font-bold text-orange-300">{Math.round(percentGapRelativeCurrent)}%</span>
                     </div>
-                    <Progress value={progressPercentage} className="h-4 rounded-full bg-white/10" />
+                    <Progress value={progressPercentage ?? 0} className="h-4 rounded-full bg-white/10" />
                     <div className="flex justify-between text-sm text-white/60">
                       <span>{formatSats(currentPriceSats)} sats</span>
                       <span className={satsDifference < 0 ? "text-emerald-400 font-semibold" : "text-orange-400 font-semibold"}>
