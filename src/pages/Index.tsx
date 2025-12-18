@@ -104,12 +104,12 @@ const Index = () => {
 
         {/* Bitcoin Price */}
         {priceData && (
-          <Card className="bg-gradient-to-r from-orange-500/20 to-purple-500/20 border-orange-500/30">
+          <Card className="bg-gradient-to-r from-slate-800 to-slate-700 border-slate-700/50 text-white shadow-lg">
             <CardContent className="py-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-white/60 uppercase tracking-wide">Bitcoin Preis</p>
-                  <p className="text-3xl font-bold text-white">
+                  <p className="text-xs text-white/70 uppercase tracking-wide">Bitcoin Preis</p>
+                  <p className="text-3xl font-bold">
                     {priceData.satsToEuro(100000000).toLocaleString('de-DE', {
                       style: 'currency',
                       currency: 'EUR',

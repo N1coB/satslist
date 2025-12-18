@@ -28,11 +28,24 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
   const targetPriceEUR = item.targetPriceEUR;
   const targetPriceSats = item.targetPriceSats;
 
-  // Fortschritt: Wie viel Rabatt wurde erreicht?
-  // 0% = Aktueller Preis, 100% = Zielpreis erreicht
-  const progress = currentPriceEUR && targetPriceEUR && currentPriceEUR > 0
-    ? Math.max(0, Math.min(100, ((currentPriceEUR - targetPriceEUR) / currentPriceEUR) * 100))
-    : 0;
+  // Fortschritts-Berechnungen (Sats-basiert)
+  let satsDifference = 0; // Differenz zwischen aktuellem Shop-Preis in Sats und Zielpreis in Sats
+  let progressPercentage = 0; // Prozentualer Fortschritt für die Bar
+  let savingsInEuro = 0; // Ersparnis in Euro
+
+  if (currentPriceSats && targetPriceSats) {
+    satsDifference = currentPriceSats - targetPriceSats;
+
+    if (currentPriceSats > 0) {
+      progressPercentage = (satsDifference / currentPriceSats) * 100;
+      // Fortschritt für die Bar auf 0-100 clippen
+      progressPercentage = Math.max(0, Math.min(100, progressPercentage));
+    }
+
+    if (bitcoinPrice) {
+      savingsInEuro = bitcoinPrice.satsToEuro(satsDifference);
+    }
+  }
 
   const isReady = currentPriceSats && targetPriceSats
     ? currentPriceSats <= targetPriceSats
@@ -117,16 +130,19 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
         </div>
 
         {/* Fortschrittsbalken auf Karte */}
-        {currentPriceEUR && targetPriceEUR && (
+        {currentPriceSats && targetPriceSats && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-white/60">Rabatt-Fortschritt</span>
-              <span className="text-white font-semibold">{Math.round(progress)}%</span>
+              <span className="text-white/60">Fortschritt</span>
+              <span className="text-white font-semibold">{Math.round(progressPercentage)}%</span>
             </div>
-            <Progress value={progress} className="h-2 rounded-full bg-white/10" />
+            <Progress value={progressPercentage} className="h-2 rounded-full bg-white/10" />
             <div className="flex justify-between text-[10px] text-white/50">
-              <span>Aktuell: {formatEuros(currentPriceEUR)}</span>
-              <span>Ziel: {formatEuros(targetPriceEUR)}</span>
+              <span>Aktuell: {formatSats(currentPriceSats)} sats</span>
+              <span className={satsDifference < 0 ? "text-emerald-400 font-semibold" : "text-orange-400 font-semibold"}>
+                {savingsInEuro < 0 ? `+${formatEuros(Math.abs(savingsInEuro))}` : `-${formatEuros(savingsInEuro)}`}
+              </span>
+              <span>Ziel: {formatSats(targetPriceSats)} sats</span>
             </div>
           </div>
         )}
@@ -151,10 +167,10 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
             </a>
           </Button>
         ) : (
-          <div />
+          <span className="text-xs text-white/50">Kein Produktlink verfügbar</span>
         )}
         <span className="text-[10px] text-white/40">
-          {new Date(item.createdAt * 1000).toLocaleDateString('de-DE')}
+          Hinzugefügt am {new Date(item.createdAt * 1000).toLocaleDateString('de-DE')}
         </span>
       </CardFooter>
     </Card>
@@ -190,7 +206,7 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
           {/* Preis-Übersicht */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
             {/* Zielpreis - IMMER anzeigen */}
-            <Card className="bg-gradient-to-br from-orange-600/20 to-orange-700/10 border-orange-500/40 text-white p-4">
+            <Card className="bg-gradient-to-br from-slate-800/70 to-slate-800/40 border-orange-500/40 text-white p-4 shadow-lg">
               <CardHeader className="p-0 pb-2">
                 <p className="text-sm text-orange-200/80 mb-2">Dein Zielpreis</p>
                 <p className="text-3xl font-bold leading-tight">
@@ -225,23 +241,23 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
               </Card>
             )}
 
-            {/* Fortschrittsbalken - nur wenn beide Preise vorhanden */}
-            {currentPriceEUR && targetPriceEUR && currentPriceEUR > targetPriceEUR && (
+            {/* Fortschrittsbalken - nur wenn beide Preise vorhanden und der aktuelle Preis über dem Ziel liegt */}
+            {currentPriceSats && targetPriceSats && satsDifference > 0 && (
               <Card className="bg-white/5 border-white/10 text-white p-4">
                 <CardHeader className="p-0 pb-3">
-                  <p className="text-sm text-white/60 mb-3">Rabatt-Fortschritt</p>
+                  <p className="text-sm text-white/60 mb-3">Fortschritt</p>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-white/70">Ersparnis</span>
-                      <span className="text-2xl font-bold text-orange-300">{Math.round(progress)}%</span>
+                      <span className="text-sm text-white/70">Differenz in %</span>
+                      <span className="text-2xl font-bold text-orange-300">{Math.round(progressPercentage)}%</span>
                     </div>
-                    <Progress value={progress} className="h-4 rounded-full bg-white/10" />
+                    <Progress value={progressPercentage} className="h-4 rounded-full bg-white/10" />
                     <div className="flex justify-between text-sm text-white/60">
-                      <span>{formatEuros(currentPriceEUR)}</span>
-                      <span className="text-green-300 font-semibold">
-                        −{formatEuros(currentPriceEUR - targetPriceEUR)}
+                      <span>{formatSats(currentPriceSats)} sats</span>
+                      <span className={satsDifference < 0 ? "text-emerald-400 font-semibold" : "text-orange-400 font-semibold"}>
+                        {savingsInEuro < 0 ? `+${formatEuros(Math.abs(savingsInEuro))}` : `-${formatEuros(savingsInEuro)}`}
                       </span>
-                      <span>{formatEuros(targetPriceEUR)}</span>
+                      <span>{formatSats(targetPriceSats)} sats</span>
                     </div>
                   </div>
                 </CardHeader>
