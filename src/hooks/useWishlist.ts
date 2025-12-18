@@ -314,7 +314,7 @@ export function useWishlist(options?: UseWishlistOptions) {
     const ids = parseFilterEventIds(latestFilterEvent);
     lastPublishedIdsRef.current = sortIds(ids);
     setDeletedIds(new Set(ids));
-  }, [latestFilterEvent?.id, user?.pubkey]);
+  }, [latestFilterEvent]);
 
   const filterEventMutation = useMutation({
     mutationFn: async (ids: string[]) => {
@@ -366,7 +366,7 @@ export function useWishlist(options?: UseWishlistOptions) {
         clearTimeout(publishTimerRef.current);
       }
     };
-  }, [deletedIds, filterEventMutation, user?.pubkey]);
+  }, [deletedIds, filterEventMutation, user]);
 
   const rawWishlist: WishlistItem[] = useMemo(() => queryResult.data ?? [], [queryResult.data]);
   const wishlist: WishlistItem[] = useMemo(
