@@ -30,17 +30,26 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
 
   // Fortschritts-Berechnungen (Sats-basiert)
   let satsDifference = 0; // Differenz zwischen aktuellem Shop-Preis in Sats und Zielpreis in Sats
-  let progressPercentage = 0; // Prozentualer Fortschritt für die Bar
+  let percentGapRelativeCurrent = 0; // Wie viel Prozent der aktuelle Preis oberhalb des Ziels liegt (bezogen auf aktuellen Preis)
+  let percentOvershootRelativeTarget = 0; // Wie weit wir das Ziel bereits unterschritten haben (bezogen auf Zielpreis)
+  let progressPercentage = 0; // Fortschritt in % für die Progress-Bar (0 = keine Ersparnis, 100 = Ziel erreicht)
   let savingsInEuro = 0; // Ersparnis in Euro
 
   if (currentPriceSats && targetPriceSats) {
     satsDifference = currentPriceSats - targetPriceSats;
 
     if (currentPriceSats > 0) {
-      progressPercentage = (satsDifference / currentPriceSats) * 100;
-      // Fortschritt für die Bar auf 0-100 clippen
-      progressPercentage = Math.max(0, Math.min(100, progressPercentage));
+      percentGapRelativeCurrent = (satsDifference / currentPriceSats) * 100;
+      percentGapRelativeCurrent = Number.isFinite(percentGapRelativeCurrent) ? percentGapRelativeCurrent : 0;
     }
+
+    if (targetPriceSats > 0) {
+      percentOvershootRelativeTarget = (satsDifference / targetPriceSats) * 100;
+      percentOvershootRelativeTarget = Number.isFinite(percentOvershootRelativeTarget) ? percentOvershootRelativeTarget : 0;
+    }
+
+    // Fortschritt: 0% = gar kein Rabatt, 100% = Ziel erreicht oder unterschritten
+    progressPercentage = Math.max(0, Math.min(100, 100 - Math.max(0, percentGapRelativeCurrent)));
 
     if (bitcoinPrice) {
       savingsInEuro = bitcoinPrice.satsToEuro(satsDifference);
@@ -134,7 +143,11 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-white/60">Fortschritt</span>
-              <span className="text-white font-semibold">{Math.round(progressPercentage)}%</span>
+              <span className="text-white font-semibold">
+                {satsDifference > 0
+                  ? `${Math.round(percentGapRelativeCurrent)}% bis Ziel`
+                  : `${Math.round(Math.abs(percentOvershootRelativeTarget))}% unter Ziel`}
+              </span>
             </div>
             <Progress value={progressPercentage} className="h-2 rounded-full bg-white/10" />
             <div className="flex justify-between text-[10px] text-white/50">
@@ -245,11 +258,11 @@ export function WishlistCard({ item, bitcoinPrice, onDelete }: WishlistCardProps
             {currentPriceSats && targetPriceSats && satsDifference > 0 && (
               <Card className="bg-white/5 border-white/10 text-white p-4">
                 <CardHeader className="p-0 pb-3">
-                  <p className="text-sm text-white/60 mb-3">Fortschritt</p>
+                  <p className="text-sm text-white/60 mb-3">Fortschritt zum Zielpreis</p>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-white/70">Differenz in %</span>
-                      <span className="text-2xl font-bold text-orange-300">{Math.round(progressPercentage)}%</span>
+                      <span className="text-sm text-white/70">Benötigte Reduktion</span>
+                      <span className="text-2xl font-bold text-orange-300">{Math.round(percentGapRelativeCurrent)}%</span>
                     </div>
                     <Progress value={progressPercentage} className="h-4 rounded-full bg-white/10" />
                     <div className="flex justify-between text-sm text-white/60">
