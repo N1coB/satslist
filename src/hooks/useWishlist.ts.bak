@@ -17,7 +17,7 @@ const FILTER_EVENT_KIND = 17779;
 const FILTER_EVENT_TAG = 'satslist-wishlist-deleted';
 const FILTER_EVENT_D_TAG = 'deleted-list';
 
-// Helper functions defined outside the hook to avoid hoisting issues
+// Helper functions (defined at the top to avoid hoisting issues)
 const loadDeletedIds = () => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -65,6 +65,82 @@ const parseFilterEventIds = (event: NostrEvent): string[] => {
 
 const sortIds = (ids: string[]): string[] => ids.slice().sort();
 const areSameIdList = (a: string[], b: string[]) => a.length === b.length && a.every((value, index) => value === b[index]);
+
+// Async query queue
+let queryQueue: Promise<unknown> = Promise.resolve();
+let lastQueryTime = 0;
+
+async function enqueueQuery<T>(fn: () => Promise<T>, log?: (message: string) => void) {
+  queryQueue = queryQueue.then(async () => {
+    const now = Date.now();
+    const wait = Math.max(0, RATE_LIMIT_DELAY - (now - lastQueryTime));
+    if (wait > 0) {
+      log?.(`Throttling query for ${wait}ms`);
+      await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+    lastQueryTime = Date.now();
+    return fn();
+  });
+
+  return queryQueue as Promise<T>;
+}
+
+// Event builders and parsers
+const buildEvent = (pubkey: string, payload: WishlistPayload): Omit<NostrEvent, 'id' | 'sig'> => {
+  const itemId = payload.id ?? crypto.randomUUID();
+  const tags: [string, string][] = [
+    ['d', itemId],
+    ['t', COMMUNITY_TAG],
+    ['item', JSON.stringify({
+      id: itemId,
+      title: payload.title,
+      link: payload.link ?? null,
+      image: payload.image ?? null,
+      notes: payload.notes ?? null,
+      targetPriceSats: payload.targetPriceSats,
+      targetPriceEUR: payload.targetPriceEUR ?? null,
+      sourcePriceEUR: payload.sourcePriceEUR ?? null,
+      source: payload.source ?? null,
+    })],
+  ];
+
+  return {
+    kind: WISHLIST_KIND,
+    content: '',
+    tags,
+    created_at: Math.floor(Date.now() / 1000),
+    pubkey,
+  };
+};
+
+const parseWishlistEvent = (event: NostrEvent): WishlistItem | null => {
+  const itemTag = event.tags.find(([name]) => name === 'item');
+  if (!itemTag) return null;
+
+  try {
+    const payload = JSON.parse(itemTag[1]);
+    const id = payload.id ?? event.id;
+
+    return {
+      id,
+      title: payload.title,
+      link: payload.link ?? undefined,
+      image: payload.image ?? undefined,
+      notes: payload.notes ?? undefined,
+      targetPriceSats: payload.targetPriceSats,
+      targetPriceEUR: payload.targetPriceEUR ?? undefined,
+      currentPriceSats: payload.currentPriceSats ?? undefined,
+      sourcePriceEUR: payload.sourcePriceEUR ?? undefined,
+      source: payload.source ?? undefined,
+      status: payload.status ?? 'dreaming',
+      createdAt: event.created_at ?? Math.floor(Date.now() / 1000),
+      eventId: event.id,
+    };
+  } catch (error) {
+    console.warn('Failed to parse wishlist event', event, error);
+    return null;
+  }
+};
 
 export function useWishlist(options?: { logRelay?: (message: string) => void }) {
   const logRelay = options?.logRelay ?? (() => {});
@@ -139,82 +215,6 @@ export function useWishlist(options?: { logRelay?: (message: string) => void }) 
     });
     ready.forEach(notifyUser);
   }, [notifyUser]);
-
-  // Async query queue
-  const queryQueueRef = useRef<Promise<unknown>>(Promise.resolve());
-  const lastQueryTimeRef = useRef(0);
-
-  const enqueueQuery = useCallback(<T>(fn: () => Promise<T>, log?: (message: string) => void) => {
-    queryQueueRef.current = queryQueueRef.current.then(async () => {
-      const now = Date.now();
-      const wait = Math.max(0, RATE_LIMIT_DELAY - (now - lastQueryTimeRef.current));
-      if (wait > 0) {
-        log?.(`Throttling query for ${wait}ms`);
-        await new Promise((resolve) => setTimeout(resolve, wait));
-      }
-      lastQueryTimeRef.current = Date.now();
-      return fn();
-    });
-
-    return queryQueueRef.current as Promise<T>;
-  }, []);
-
-  // Event builders and parsers
-  const buildEvent = useCallback((pubkey: string, payload: WishlistPayload): Omit<NostrEvent, 'id' | 'sig'> => {
-    const itemId = payload.id ?? crypto.randomUUID();
-    const tags: [string, string][] = [
-      ['d', itemId],
-      ['t', COMMUNITY_TAG],
-      ['item', JSON.stringify({
-        id: itemId,
-        title: payload.title,
-        link: payload.link ?? null,
-        image: payload.image ?? null,
-        notes: payload.notes ?? null,
-        targetPriceSats: payload.targetPriceSats,
-        targetPriceEUR: payload.targetPriceEUR ?? null,
-        sourcePriceEUR: payload.sourcePriceEUR ?? null,
-        source: payload.source ?? null,
-      })],
-    ];
-
-    return {
-      kind: WISHLIST_KIND,
-      content: '',
-      tags,
-      created_at: Math.floor(Date.now() / 1000),
-      pubkey,
-    };
-  }, []);
-
-  const parseWishlistEvent = useCallback((event: NostrEvent): WishlistItem | null => {
-    const itemTag = event.tags.find(([name]) => name === 'item');
-    if (!itemTag) return null;
-
-    try {
-      const payload = JSON.parse(itemTag[1]);
-      const id = payload.id ?? event.id;
-
-      return {
-        id,
-        title: payload.title,
-        link: payload.link ?? undefined,
-        image: payload.image ?? undefined,
-        notes: payload.notes ?? undefined,
-        targetPriceSats: payload.targetPriceSats,
-        targetPriceEUR: payload.targetPriceEUR ?? undefined,
-        currentPriceSats: payload.currentPriceSats ?? undefined,
-        sourcePriceEUR: payload.sourcePriceEUR ?? undefined,
-        source: payload.source ?? undefined,
-        status: payload.status ?? 'dreaming',
-        createdAt: event.created_at ?? Math.floor(Date.now() / 1000),
-        eventId: event.id,
-      };
-    } catch (error) {
-      console.warn('Failed to parse wishlist event', event, error);
-      return null;
-    }
-  }, []);
 
   const queryResult = useQuery({
     queryKey: ['wishlist', user?.pubkey],

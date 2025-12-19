@@ -70,13 +70,13 @@ const Index = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#0c0c11] via-[#151521] to-[#0c0c11] text-white">
+      <div className="min-h-screen bg-background text-foreground">
         <div className="container mx-auto px-4 py-16">
           <div className="max-w-2xl mx-auto text-center space-y-8">
-            <h1 className="text-5xl font-bold bg-gradient-to-r from-orange-400 to-purple-500 bg-clip-text text-transparent">
+            <h1 className="text-5xl font-bold text-accent">
               SatsList
             </h1>
-            <p className="text-xl text-white/70">
+            <p className="text-xl text-foreground/70">
               Deine Bitcoin Wunschliste auf Nostr
             </p>
             <LoginArea className="max-w-sm mx-auto" />
@@ -87,15 +87,15 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0c0c11] via-[#151521] to-[#0c0c11] text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="container mx-auto px-4 py-8 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-400 to-purple-500 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bold text-accent">
               SatsList
             </h1>
-            <p className="text-sm text-white/70 mt-1">Deine Bitcoin Wunschliste</p>
+            <p className="text-sm text-foreground/70 mt-1">Deine Bitcoin Wunschliste</p>
           </div>
           <div className="flex items-center gap-3">
             <LoginArea className="max-w-60" />
@@ -104,11 +104,11 @@ const Index = () => {
 
         {/* Bitcoin Price */}
         {priceData && (
-          <Card className="bg-gradient-to-r from-slate-800 to-slate-700 border-slate-700/50 text-white shadow-lg">
+          <Card className="bg-card border border-border text-foreground shadow-lg">
             <CardContent className="py-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-white/70 uppercase tracking-wide">Bitcoin Preis</p>
+                  <p className="text-xs text-foreground/70 uppercase tracking-wide">Bitcoin Preis</p>
                   <p className="text-3xl font-bold">
                     {priceData.satsToEuro(100000000).toLocaleString('de-DE', {
                       style: 'currency',
@@ -117,13 +117,13 @@ const Index = () => {
                       maximumFractionDigits: 0,
                     })}
                   </p>
-                  <p className="text-xs text-white/50 mt-1">
+                  <p className="text-xs text-foreground/50 mt-1">
                     1 BTC = 100.000.000 sats
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-white/60">1.000 sats</p>
-                  <p className="text-2xl font-bold text-orange-300">
+                  <p className="text-sm text-foreground/60">1.000 sats</p>
+                  <p className="text-2xl font-bold text-accent">
                     {priceData.satsToEuro(1000).toLocaleString('de-DE', {
                       style: 'currency',
                       currency: 'EUR',
@@ -145,10 +145,10 @@ const Index = () => {
         />
 
         {/* Import from URL */}
-        <Card className="bg-white/5 border-white/10">
+        <Card className="bg-card border border-border">
           <CardHeader>
-            <CardTitle className="text-white text-sm">Produkt hinzufügen</CardTitle>
-            <CardDescription className="text-white/60 text-xs">
+            <CardTitle className="text-foreground text-sm">Produkt hinzufügen</CardTitle>
+            <CardDescription className="text-foreground/60 text-xs">
               Produktlink einfügen und direkt importieren
             </CardDescription>
           </CardHeader>
@@ -158,12 +158,13 @@ const Index = () => {
                 placeholder="https://shopinbit.com/produkt..."
                 value={importUrl}
                 onChange={(e) => setImportUrl(e.target.value)}
-                className="bg-white/10 text-white border-white/20 placeholder:text-white/40"
+                className="bg-muted text-foreground border border-input placeholder:text-muted-foreground"
               />
               <Button
                 onClick={() => openImportDialog(importUrl)}
                 disabled={!importUrl}
                 variant="secondary"
+                className="bg-accent text-accent-foreground hover:bg-accent/90"
               >
                 Import
               </Button>
@@ -173,7 +174,7 @@ const Index = () => {
                 variant="ghost"
                 size="sm"
                 onClick={clearDeletedItems}
-                className="text-xs text-white/50 hover:text-white/80"
+                className="text-xs text-foreground/50 hover:text-foreground/80"
               >
                 Gelöschte Einträge bereinigen
               </Button>
@@ -183,43 +184,43 @@ const Index = () => {
 
         {/* Rate Limit Warning */}
         {rateLimitWarning && (
-          <Card className="bg-orange-500/10 border-orange-500/30">
+          <Card className="bg-warning/10 border-warning/30">
             <CardContent className="py-3">
-              <p className="text-sm text-orange-300">{rateLimitWarning}</p>
+              <p className="text-sm text-warning">{rateLimitWarning}</p>
             </CardContent>
           </Card>
         )}
 
         {/* Publish Status */}
         {publishStatus.status === 'pending' && (
-          <Card className="bg-blue-500/10 border-blue-500/30">
+          <Card className="bg-info/10 border-info/30">
             <CardContent className="py-3">
-              <p className="text-sm text-blue-300">Veröffentliche...</p>
+              <p className="text-sm text-info">Veröffentliche...</p>
             </CardContent>
           </Card>
         )}
         {publishStatus.error && (
-          <Card className="bg-red-500/10 border-red-500/30">
+          <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-3">
-              <p className="text-sm text-red-300">Fehler: {publishStatus.error}</p>
+              <p className="text-sm text-destructive">Fehler: {publishStatus.error}</p>
             </CardContent>
           </Card>
         )}
 
         {/* Delete Notice */}
         {deleteStatus.status === 'pending' && (
-          <Card className="bg-orange-500/10 border-orange-500/30">
+          <Card className="bg-warning/10 border-warning/30">
             <CardContent className="py-3">
-              <p className="text-sm text-orange-300">
+              <p className="text-sm text-warning">
                 Lösche Eintrag... (wird lokal ausgeblendet, während die endgültige Löschung bei den Relays verarbeitet wird)
               </p>
             </CardContent>
           </Card>
         )}
         {deleteStatus.error && (
-          <Card className="bg-red-500/10 border-red-500/30">
+          <Card className="bg-destructive/10 border-destructive/30">
             <CardContent className="py-3">
-              <p className="text-sm text-red-300">
+              <p className="text-sm text-destructive">
                 Fehler beim Löschen: {(deleteStatus.error as Error)?.message || 'Unbekannter Fehler'}
               </p>
             </CardContent>
@@ -228,29 +229,29 @@ const Index = () => {
 
         {/* Wishlist Items */}
         {isLoading ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="bg-white/3 border-white/10">
+              <Card key={i} className="bg-card border border-border">
                 <CardHeader>
-                  <Skeleton className="h-6 w-3/4 bg-white/10" />
-                  <Skeleton className="h-4 w-1/2 bg-white/10" />
+                  <Skeleton className="h-6 w-3/4 bg-muted" />
+                  <Skeleton className="h-4 w-1/2 bg-muted" />
                 </CardHeader>
                 <CardContent>
-                  <Skeleton className="h-32 w-full bg-white/10" />
+                  <Skeleton className="h-32 w-full bg-muted" />
                 </CardContent>
               </Card>
             ))}
           </div>
         ) : wishlist.length === 0 ? (
-          <Card className="bg-white/3 border-white/10 border-dashed">
+          <Card className="bg-card border border-border border-dashed">
             <CardContent className="py-12 text-center">
-              <p className="text-white/60">
+              <p className="text-foreground/60">
                 Noch keine Wünsche eingetragen. Erstelle dein erstes Ziel!
               </p>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {wishlist.map((item) => (
               <WishlistCard
                 key={item.id}
@@ -264,34 +265,34 @@ const Index = () => {
 
         {/* Debug Info */}
         <details className="mt-8">
-          <summary className="cursor-pointer text-sm text-white/40 hover:text-white/60">
+          <summary className="cursor-pointer text-sm text-foreground/40 hover:text-foreground/60">
             Debug Info
           </summary>
           <div className="mt-4 space-y-4">
-            <Card className="bg-white/5 border-white/10">
+            <Card className="bg-card border border-border">
               <CardHeader>
-                <CardTitle className="text-white text-sm">
+                <CardTitle className="text-foreground text-sm">
                   {debugEvents.length} Events
                 </CardTitle>
-                <CardDescription className="text-white/60 text-xs">
+                <CardDescription className="text-foreground/60 text-xs">
                   Die Liste zeigt rohe Kind-30078-Events. Wenn nichts angezeigt wird, prüfe deine Relays und Wallet-Rechte.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <pre className="text-xs text-white/80 overflow-x-auto">
+                <pre className="text-xs text-foreground/80 overflow-x-auto">
                   {JSON.stringify(debugEvents, null, 2)}
                 </pre>
               </CardContent>
             </Card>
 
-            <Card className="bg-white/5 border-white/10">
+            <Card className="bg-card border border-border">
               <CardHeader>
-                <CardTitle className="text-white text-sm">
+                <CardTitle className="text-foreground text-sm">
                   Relay Log (letzte 15)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-1 text-xs text-white/60 font-mono max-h-64 overflow-y-auto">
+                <div className="space-y-1 text-xs text-foreground/60 font-mono max-h-64 overflow-y-auto">
                   {relayLog.map((log, i) => (
                     <div key={i}>{log}</div>
                   ))}
@@ -299,16 +300,16 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-white/5 border-white/10">
+            <Card className="bg-card border border-border">
               <CardHeader>
-                <CardTitle className="text-white text-sm">Relays & Rechte</CardTitle>
+                <CardTitle className="text-foreground text-sm">Relays & Rechte</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2 text-xs text-white/70">
+                <div className="space-y-2 text-xs text-foreground/70">
                   {relayList.map((relay) => (
                     <div key={relay.url} className="flex items-center justify-between">
                       <span className="font-mono">{relay.url}</span>
-                      <span className="text-white/50">
+                      <span className="text-foreground/50">
                         {relay.read && 'R'} / {relay.write && 'W'}
                       </span>
                     </div>
@@ -317,28 +318,28 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-white/5 border-white/10">
+            <Card className="bg-card border border-border">
               <CardHeader>
-                <CardTitle className="text-white text-sm">Publizieren</CardTitle>
+                <CardTitle className="text-foreground text-sm">Publizieren</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-white/60">Status:</span>
-                    <span className="text-white">{publishStatus.status}</span>
+                    <span className="text-foreground/60">Status:</span>
+                    <span className="text-foreground">{publishStatus.status}</span>
                   </div>
                   {publishStatus.lastSuccessAt && (
                     <div className="flex justify-between">
-                      <span className="text-white/60">Letzter Erfolg:</span>
-                      <span className="text-white">
+                      <span className="text-foreground/60">Letzter Erfolg:</span>
+                      <span className="text-foreground">
                         {new Date(publishStatus.lastSuccessAt).toLocaleTimeString('de-DE')}
                       </span>
                     </div>
                   )}
                   {publishStatus.error && (
                     <div className="flex justify-between">
-                      <span className="text-white/60">Fehler:</span>
-                      <span className="text-red-400">{publishStatus.error}</span>
+                      <span className="text-foreground/60">Fehler:</span>
+                      <span className="text-destructive">{publishStatus.error}</span>
                     </div>
                   )}
                 </div>

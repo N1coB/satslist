@@ -13,7 +13,7 @@
     --popover: 240 10% 13%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 30 92% 53%; /* #F7931A */
+    --primary: 30 100% 50%; /* #FF9900 */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 63%; /* #A0A0A0 */
@@ -22,7 +22,7 @@
     --muted: 240 10% 13%;
     --muted-foreground: 0 0% 63%;
 
-    --accent: 30 92% 53%; /* #F7931A */
+    --accent: 30 100% 50%; /* #FF9900 */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 0% 100%; /* Not specified in new guide, keep white for safety for now */
@@ -30,18 +30,18 @@
 
     --border: 240 10% 18%; /* Slightly lighter dark grey for borders */
     --input: 240 10% 18%;
-    --ring: 30 92% 53%; /* Primary accent */
+    --ring: 30 100% 50%; /* #FF9900 */
 
     --radius: 1rem;
 
     --sidebar-background: 240 10% 13%;
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 30 92% 53%;
+    --sidebar-primary: 30 100% 50%; /* #FF9900 */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 92% 53%;
+    --sidebar-accent: 30 100% 50%; /* #FF9900 */
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 240 10% 18%;
-    --sidebar-ring: 30 92% 53%;
+    --sidebar-ring: 30 100% 50%; /* #FF9900 */
 
     --success: 148 65% 42%; /* #27AE60 - New custom property */
     --info: 276 56% 59%; /* #8E44AD - New custom property */
@@ -57,7 +57,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 15% 10%;
 
-    --primary: 27 90% 55%;
+    --primary: 30 100% 50%; /* #FF9900 */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 40% 96%;
@@ -66,7 +66,7 @@
     --muted: 210 40% 96%;
     --muted-foreground: 222 15% 10%;
 
-    --accent: 29 90% 58%;
+    --accent: 30 100% 50%; /* #FF9900 */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 6 78% 58%;
@@ -74,16 +74,16 @@
 
     --border: 210 16% 90%;
     --input: 210 18% 94%;
-    --ring: 29 100% 62%;
+    --ring: 30 100% 50%;
 
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 15% 10%;
-    --sidebar-primary: 220 13% 15%;
+    --sidebar-primary: 30 100% 50%; /* #FF9900 */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 13% 15%;
+    --sidebar-accent: 30 100% 50%; /* #FF9900 */
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 210 16% 90%;
-    --sidebar-ring: 29 100% 62%;
+    --sidebar-ring: 30 100% 50%; /* #FF9900 */
   }
 
   * {
@@ -91,7 +91,7 @@
   }
 
   body {
-    @apply bg-background text-foreground selection:bg-[#ff8a4d] selection:text-white;
+    @apply bg-background text-foreground selection:bg-accent selection:text-accent-foreground;
     background: radial-gradient(circle at top, rgba(255, 138, 77, 0.25), transparent 40%),
       radial-gradient(circle at 20% 20%, rgba(255, 200, 120, 0.2), transparent 35%),
       radial-gradient(circle at 80% 0%, rgba(255, 66, 100, 0.25), transparent 40%),
