@@ -9,10 +9,7 @@ import { getNotificationConsent, setNotificationConsent, loadNotifiedIds, persis
 // Constants
 const WISHLIST_KIND = 30078;
 const COMMUNITY_TAG = 'satslist-wishlist';
-const RATE_LIMIT_DELAY = 2000;
 const STORAGE_KEY = 'satslist-deleted-items';
-const CLEANUP_THRESHOLD = 200;
-const CLEANUP_TARGET = 100;
 const FILTER_EVENT_KIND = 10078; // Replaceable Event (10000-19999)
 const FILTER_EVENT_TAG = 'satslist-wishlist-deleted';
 const FILTER_EVENT_D_TAG = 'deleted-wishlist-items';
@@ -67,13 +64,12 @@ const sortIds = (ids: string[]): string[] => ids.slice().sort();
 const areSameIdList = (a: string[], b: string[]) => a.length === b.length && a.every((value, index) => value === b[index]);
 
 export function useWishlist(options?: { logRelay?: (message: string) => void }) {
-  const logRelay = options?.logRelay ?? (() => {});
+  const logRelay = useMemo(() => options?.logRelay ?? (() => {}), [options?.logRelay]);
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
   const queryClient = useQueryClient();
   const [lastPublishError, setLastPublishError] = useState<string | null>(null);
   const [lastPublishSuccess, setLastPublishSuccess] = useState<number | null>(null);
-  const [rateLimitWarning, setRateLimitWarning] = useState<string | null>(null);
   const [deletedIds, setDeletedIds] = useState<Set<string>>(() => loadDeletedIds());
   const lastPublishedIdsRef = useRef<string[]>([]);
   const publishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -142,7 +138,7 @@ export function useWishlist(options?: { logRelay?: (message: string) => void }) 
 
   // Simple query wrapper without rate limiting
   // Modern relays handle rate limiting on their end
-  const enqueueQuery = useCallback(<T>(fn: () => Promise<T>, log?: (message: string) => void) => {
+  const enqueueQuery = useCallback(<T>(fn: () => Promise<T>, _log?: (message: string) => void) => {
     return fn();
   }, []);
 
@@ -348,7 +344,7 @@ export function useWishlist(options?: { logRelay?: (message: string) => void }) 
       await nostr.event(signed, { signal: AbortSignal.timeout(5000) });
       return signed;
     },
-    onSuccess: (data) => {
+    onSuccess: (_data) => {
       logRelay('Filter event published successfully');
       lastPublishedIdsRef.current = sortIds(Array.from(deletedIds));
     },
@@ -408,7 +404,6 @@ export function useWishlist(options?: { logRelay?: (message: string) => void }) 
     deleteItem: deleteMutation.mutateAsync,
     publishStatus: { status: mutationResult.status, error: lastPublishError, lastSuccessAt: lastPublishSuccess },
     deleteStatus: { status: deleteMutation.status, error: deleteMutation.error },
-    rateLimitWarning,
     refetch: queryResult.refetch,
     clearDeletedItems: () => {
       localStorage.removeItem(STORAGE_KEY);

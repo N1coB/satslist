@@ -39,7 +39,6 @@ const Index = () => {
     isLoading,
     publishStatus,
     deleteStatus,
-    rateLimitWarning,
   } = useWishlist({ logRelay });
   const { data: priceData } = useBitcoinPrice();
 
@@ -181,15 +180,6 @@ const Index = () => {
             </div>
           </CardContent>
         </Card>
-
-        {/* Rate Limit Warning */}
-        {rateLimitWarning && (
-          <Card className="bg-warning/10 border-warning/30">
-            <CardContent className="py-3">
-              <p className="text-sm text-warning">{rateLimitWarning}</p>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Publish Status */}
         {publishStatus.status === 'pending' && (
