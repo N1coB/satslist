@@ -40,6 +40,8 @@ const Index = () => {
     publishStatus,
     deleteStatus,
     rateLimitWarning,
+    requestNotificationPermission,
+    notificationConsent,
   } = useWishlist({ logRelay });
   const { data: priceData } = useBitcoinPrice();
 
@@ -355,6 +357,8 @@ const Index = () => {
         onSave={handleSave}
         priceData={priceData}
         initialUrl={importUrl}
+        requestNotificationPermission={requestNotificationPermission}
+        notificationConsent={notificationConsent}
       />
     </div>
   );
