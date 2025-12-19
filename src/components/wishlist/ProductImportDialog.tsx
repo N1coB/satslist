@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link2, Sparkles } from 'lucide-react';
+import { Link2, Sparkles, Bell, BellOff, CheckCircle2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { WishlistPayload } from '@/types/wishlist';
 import { useProductMetadata } from '@/hooks/useProductMetadata';
 import type { BitcoinPriceData } from '@/hooks/useBitcoinPrice';
 import { formatEuros, formatSats } from '@/lib/format';
+import { setNotificationConsent } from '@/hooks/useNotificationConsent';
 
 interface ProductImportDialogProps {
   open: boolean;
@@ -34,6 +35,8 @@ export function ProductImportDialog({
   const [targetEuro, setTargetEuro] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showNotificationDialog, setShowNotificationDialog] = useState(false);
+  const [savedProductTitle, setSavedProductTitle] = useState('');
 
   const metadataQuery = useProductMetadata(submittedUrl);
   const metadata = metadataQuery.data;
@@ -96,13 +99,22 @@ export function ProductImportDialog({
         source: metadata?.source,
       });
 
+      // Speichere Produkttitel für Benachrichtigungs-Dialog
+      setSavedProductTitle(title.trim());
+
+      // Reset form
       setUrl('');
       setSubmittedUrl('');
       setTitle('');
       setImage(undefined);
       setNotes('');
       setTargetEuro('');
+
+      // Schließe Import-Dialog
       onOpenChange(false);
+
+      // Zeige Benachrichtigungs-Dialog
+      setShowNotificationDialog(true);
     } catch (error) {
       console.error(error);
       setErrorMessage('Fehler beim Speichern deiner Wunschliste.');
@@ -123,7 +135,23 @@ export function ProductImportDialog({
       ? 'Metadaten geladen'
       : 'URL eingeben und Metadaten laden';
 
+  const handleEnableNotifications = async () => {
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationConsent(permission);
+      setShowNotificationDialog(false);
+    } catch (error) {
+      console.error('Fehler beim Anfordern der Benachrichtigungsberechtigung:', error);
+      setShowNotificationDialog(false);
+    }
+  };
+
+  const handleSkipNotifications = () => {
+    setShowNotificationDialog(false);
+  };
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[min(90vw,520px)] bg-[#0c0c11] border border-white/10 shadow-2xl shadow-orange-500/40">
         <DialogHeader>
@@ -261,5 +289,62 @@ export function ProductImportDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Benachrichtigungs-Dialog nach erfolgreichem Import */}
+    <Dialog open={showNotificationDialog} onOpenChange={setShowNotificationDialog}>
+      <DialogContent className="w-[min(90vw,480px)] bg-gradient-to-br from-[#0c0c11] via-[#0e0e14] to-[#0c0c11] border border-orange-500/30 shadow-2xl shadow-orange-500/20">
+        <DialogHeader>
+          <div className="flex items-center justify-center mb-4">
+            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-orange-500/30 to-orange-600/20 flex items-center justify-center">
+              <CheckCircle2 className="h-8 w-8 text-orange-400" />
+            </div>
+          </div>
+          <DialogTitle className="text-white text-center text-xl">
+            Produkt erfolgreich hinzugefügt! 🎉
+          </DialogTitle>
+          <DialogDescription className="text-center text-white/70 pt-2">
+            <span className="font-semibold text-orange-300">{savedProductTitle}</span> wurde zu deiner Wunschliste hinzugefügt.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-4">
+            <div className="flex items-start gap-3">
+              <Bell className="h-5 w-5 text-orange-400 flex-shrink-0 mt-0.5" />
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-white">
+                  Möchtest du benachrichtigt werden?
+                </p>
+                <p className="text-xs text-white/70 leading-relaxed">
+                  Wir können dich informieren, sobald dein Zielpreis erreicht wurde.
+                  Du verpasst so nie wieder ein gutes Angebot!
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Button
+            onClick={handleSkipNotifications}
+            variant="ghost"
+            size="lg"
+            className="w-full sm:w-auto text-white/80 hover:text-white hover:bg-white/5"
+          >
+            <BellOff className="h-4 w-4 mr-2" />
+            Nein, danke
+          </Button>
+          <Button
+            onClick={handleEnableNotifications}
+            size="lg"
+            className="w-full sm:w-auto bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg shadow-orange-500/30"
+          >
+            <Bell className="h-4 w-4 mr-2" />
+            Ja, benachrichtigen
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
