@@ -236,7 +236,7 @@ export function useWishlist(options?: { logRelay?: (message: string) => void }) 
 
   const queryResult = useQuery({
     queryKey: ['wishlist', user?.pubkey],
-    enabled: Boolean(user) && !filterEventQuery.isLoading,
+    enabled: Boolean(user),
     queryFn: async ({ signal }) => {
       if (!user) return [];
 
