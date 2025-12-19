@@ -140,23 +140,10 @@ export function useWishlist(options?: { logRelay?: (message: string) => void }) 
     ready.forEach(notifyUser);
   }, [notifyUser]);
 
-  // Async query queue
-  const queryQueueRef = useRef<Promise<unknown>>(Promise.resolve());
-  const lastQueryTimeRef = useRef(0);
-
+  // Simple query wrapper without rate limiting
+  // Modern relays handle rate limiting on their end
   const enqueueQuery = useCallback(<T>(fn: () => Promise<T>, log?: (message: string) => void) => {
-    queryQueueRef.current = queryQueueRef.current.then(async () => {
-      const now = Date.now();
-      const wait = Math.max(0, RATE_LIMIT_DELAY - (now - lastQueryTimeRef.current));
-      if (wait > 0) {
-        log?.(`Throttling query for ${wait}ms`);
-        await new Promise((resolve) => setTimeout(resolve, wait));
-      }
-      lastQueryTimeRef.current = Date.now();
-      return fn();
-    });
-
-    return queryQueueRef.current as Promise<T>;
+    return fn();
   }, []);
 
   // Event builders and parsers
