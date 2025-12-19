@@ -13,9 +13,9 @@ const RATE_LIMIT_DELAY = 2000;
 const STORAGE_KEY = 'satslist-deleted-items';
 const CLEANUP_THRESHOLD = 200;
 const CLEANUP_TARGET = 100;
-const FILTER_EVENT_KIND = 17779;
+const FILTER_EVENT_KIND = 10078; // Replaceable Event (10000-19999)
 const FILTER_EVENT_TAG = 'satslist-wishlist-deleted';
-const FILTER_EVENT_D_TAG = 'deleted-list';
+const FILTER_EVENT_D_TAG = 'deleted-wishlist-items';
 
 // Helper functions defined outside the hook to avoid hoisting issues
 const loadDeletedIds = () => {
@@ -195,6 +195,11 @@ export function useWishlist(options?: { logRelay?: (message: string) => void }) 
       const payload = JSON.parse(itemTag[1]);
       const id = payload.id ?? event.id;
 
+      // Skip deleted events during parsing
+      if (deletedIds.has(id)) {
+        return null;
+      }
+
       return {
         id,
         title: payload.title,
@@ -214,11 +219,24 @@ export function useWishlist(options?: { logRelay?: (message: string) => void }) 
       console.warn('Failed to parse wishlist event', event, error);
       return null;
     }
-  }, []);
+  }, [deletedIds]);
+
+  // Load filter event first to get deleted IDs before loading wishlist
+  const filterEventQuery = useQuery({
+    queryKey: ['wishlist-filter-event', user?.pubkey],
+    enabled: Boolean(user),
+    queryFn: async ({ signal }) => {
+      if (!user) return [];
+      const filters = [{ kinds: [FILTER_EVENT_KIND], authors: [user.pubkey], '#d': [FILTER_EVENT_D_TAG], limit: 1 }];
+      return enqueueQuery(() => nostr.query(filters, { signal }), logRelay);
+    },
+    staleTime: 1000 * 60 * 5,
+    retry: 1,
+  });
 
   const queryResult = useQuery({
     queryKey: ['wishlist', user?.pubkey],
-    enabled: Boolean(user),
+    enabled: Boolean(user) && !filterEventQuery.isLoading,
     queryFn: async ({ signal }) => {
       if (!user) return [];
 
@@ -270,15 +288,27 @@ export function useWishlist(options?: { logRelay?: (message: string) => void }) 
   const deleteMutation = useMutation({
     mutationFn: async (itemId: string) => {
       if (!user) throw new Error('Not logged in');
+
+      // Find the item to get its eventId from current query data
+      const currentWishlist = queryClient.getQueryData<WishlistItem[]>(['wishlist', user.pubkey]) ?? [];
+      const item = currentWishlist.find(i => i.id === itemId);
+
+      // NIP-09 Delete Event
       const deleteEvent = {
         kind: 5,
-        content: 'Deleted wishlist item',
-        tags: [['a', `${WISHLIST_KIND}:${user.pubkey}:${itemId}`]],
+        content: 'Item removed from wishlist',
+        tags: [
+          ['a', `${WISHLIST_KIND}:${user.pubkey}:${itemId}`],
+          ['k', String(WISHLIST_KIND)],
+          ...(item?.eventId ? [['e', item.eventId]] : []), // Include event ID if available
+        ],
         created_at: Math.floor(Date.now() / 1000),
         pubkey: user.pubkey,
       };
       const signed = await user.signer.signEvent(deleteEvent as NostrEvent);
       await nostr.event(signed, { signal: AbortSignal.timeout(5000) });
+
+      // Filter Event will be published automatically via useEffect
       return { itemId, event: signed };
     },
     onMutate: async (itemId: string) => {
@@ -293,7 +323,8 @@ export function useWishlist(options?: { logRelay?: (message: string) => void }) 
     },
     onSuccess: () => {
       logRelay('Delete succeeded');
-      setTimeout(() => queryResult.refetch(), 3000);
+      // No refetch needed - optimistic update handles UI
+      // Filter event will sync to other devices
     },
     onError: (error, itemId, context) => {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -308,18 +339,6 @@ export function useWishlist(options?: { logRelay?: (message: string) => void }) 
         queryClient.setQueryData(['wishlist', user?.pubkey], context.previousWishlist);
       }
     },
-  });
-
-  const filterEventQuery = useQuery({
-    queryKey: ['wishlist-filter-event', user?.pubkey],
-    enabled: Boolean(user),
-    queryFn: async ({ signal }) => {
-      if (!user) return [];
-      const filters = [{ kinds: [FILTER_EVENT_KIND], authors: [user.pubkey], '#t': [FILTER_EVENT_TAG], limit: 1 }];
-      return enqueueQuery(() => nostr.query(filters, { signal }), logRelay);
-    },
-    staleTime: 1000 * 60 * 5,
-    retry: 1,
   });
 
   const filterEventMutation = useMutation({
@@ -354,11 +373,21 @@ export function useWishlist(options?: { logRelay?: (message: string) => void }) 
 
   const latestFilterEvent = filterEventQuery.data?.[0];
 
+  // Smart Merge: Combine relay data with local data
   useEffect(() => {
     if (!latestFilterEvent) return;
-    const ids = parseFilterEventIds(latestFilterEvent);
-    lastPublishedIdsRef.current = sortIds(ids);
-    setDeletedIds(new Set(ids));
+
+    const relayIds = parseFilterEventIds(latestFilterEvent);
+    const localIds = Array.from(loadDeletedIds());
+
+    // Merge: Relay is source of truth, but keep local IDs until synced
+    const merged = new Set([...relayIds, ...localIds]);
+
+    lastPublishedIdsRef.current = sortIds(relayIds);
+    setDeletedIds(merged);
+
+    // Sync localStorage with relay data (source of truth)
+    persistDeletedIds(merged);
   }, [latestFilterEvent]);
 
   useEffect(() => {
