@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useCallback, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNostr } from '@nostrify/react';
 import { useCurrentUser } from './useCurrentUser';
 import type { NostrEvent } from '@nostrify/nostrify';
 import { WishlistItem, type WishlistPayload } from '@/types/wishlist';
+import { getNotificationConsent, setNotificationConsent, loadNotifiedIds, persistNotifiedIds } from './useNotificationConsent';
 
 const WISHLIST_KIND = 30078;
 const COMMUNITY_TAG = 'satslist-wishlist';
@@ -92,50 +93,8 @@ const parseWishlistEvent = (event: NostrEvent): WishlistItem | null => {
   }
 };
 
-const parseFilterEventIds = (event?: NostrEvent): string[] => {
-  if (!event) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(event.content);
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return Array.from(new Set(parsed.filter((value): value is string => typeof value === 'string')));
-  } catch (error) {
-    console.warn('Failed to parse filter event', event, error);
-    return [];
-  }
-};
-
-const noOpLog = () => {};
-
-const loadDeletedIds = () => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
-  } catch (error) {
-    console.warn('Failed to load deleted wishlist IDs', error);
-    return new Set<string>();
-  }
-};
-
-const persistDeletedIds = (ids: Set<string>) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(ids)));
-  } catch (error) {
-    console.warn('Failed to persist deleted wishlist IDs', error);
-  }
-};
-
-interface UseWishlistOptions {
-  logRelay?: (message: string) => void;
-}
-
-export function useWishlist(options?: UseWishlistOptions) {
-  const logRelay = options?.logRelay ?? noOpLog;
+export function useWishlist(options?: { logRelay?: (message: string) => void }) {
+  const logRelay = options?.logRelay ?? (() => {});
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
   const queryClient = useQueryClient();
@@ -145,25 +104,68 @@ export function useWishlist(options?: UseWishlistOptions) {
   const [deletedIds, setDeletedIds] = useState<Set<string>>(() => loadDeletedIds());
   const lastPublishedIdsRef = useRef<string[]>([]);
   const publishTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [notificationConsent, setNotificationPermission] = useState<NotificationPermission>(() => getNotificationConsent());
+  const [notifiedItems, setNotifiedItems] = useState<Set<string>>(() => loadNotifiedIds());
 
   useEffect(() => {
-    if (deletedIds.size > CLEANUP_THRESHOLD) {
-      setDeletedIds(prev => {
-        const trimmed = Array.from(prev).slice(-CLEANUP_TARGET);
-        return new Set(trimmed);
-      });
-      return;
-    }
-    persistDeletedIds(deletedIds);
-  }, [deletedIds]);
+    if (!isNotificationSupported()) return;
+    const consent = getNotificationConsent();
+    setNotificationPermission(consent);
+  }, []);
 
   const addDeletedId = useCallback((itemId: string) => {
     setDeletedIds(prev => {
       const updated = new Set(prev);
       updated.add(itemId);
+      persistDeletedIds(updated);
       return updated;
     });
   }, []);
+
+  const notifyUser = useCallback((item: WishlistItem) => {
+    if (!isNotificationSupported()) return;
+    if (notificationConsent !== 'granted') return;
+    if (notifiedItems.has(item.id)) return;
+    const title = 'Dein Zielpreis ist erreicht';
+    const options: NotificationOptions = {
+      body: `${item.title} ist jetzt bei ${formatSats(item.targetPriceSats)} sats.`,
+      icon: item.image ?? '/favicon.ico',
+    };
+    try {
+      new Notification(title, options);
+      setNotifiedItems(prev => {
+        const updated = new Set(prev);
+        updated.add(item.id);
+        persistNotifiedIds(updated);
+        return updated;
+      });
+    } catch (error) {
+      console.warn('Notification failed', error);
+    }
+  }, [notificationConsent, notifiedItems]);
+
+  useEffect(() => {
+    if (!user) return;
+    const filters = [
+      {
+        kinds: [WISHLIST_KIND],
+        authors: [user.pubkey],
+        '#t': [COMMUNITY_TAG],
+        limit: 100,
+      },
+    ];
+
+    logRelay(`REQ filters: ${JSON.stringify(filters)}`);
+  }, [user, logRelay]);
+
+  const triggerNotificationForWishlist = useCallback((items: WishlistItem[]) => {
+    const ready = items.filter(item => {
+      const currentPriceSats = item.currentPriceSats;
+      if (!currentPriceSats) return false;
+      return currentPriceSats <= item.targetPriceSats;
+    });
+    ready.forEach(notifyUser);
+  }, [notifyUser]);
 
   const queryResult = useQuery({
     queryKey: ['wishlist', user?.pubkey],
@@ -171,7 +173,7 @@ export function useWishlist(options?: UseWishlistOptions) {
     queryFn: async ({ signal }) => {
       if (!user) return [];
 
-      const filters = [
+      const keys = [
         {
           kinds: [WISHLIST_KIND],
           authors: [user.pubkey],
@@ -180,30 +182,16 @@ export function useWishlist(options?: UseWishlistOptions) {
         },
       ];
 
-      logRelay(`REQ filters: ${JSON.stringify(filters)}`);
+      const events = await enqueueQuery(() => nostr.query(keys, { signal }), logRelay);
+      const map = events.reduce<Map<string, WishlistItem>>((acc, event) => {
+        const parsed = parseWishlistEvent(event);
+        if (parsed) acc.set(parsed.id, parsed);
+        return acc;
+      }, new Map());
 
-      try {
-        const events = await enqueueQuery(() => nostr.query(filters, { signal }), logRelay);
-        logRelay(`Queried ${events.length} events`);
-        setRateLimitWarning(null);
-
-        const map = events.reduce<Map<string, WishlistItem>>((acc, event) => {
-          const parsed = parseWishlistEvent(event);
-          if (parsed) {
-            acc.set(parsed.id, parsed);
-          }
-          return acc;
-        }, new Map());
-
-        return Array.from(map.values()).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        logRelay(`Query failed: ${message}`);
-        if (message.toLowerCase().includes('rate')) {
-          setRateLimitWarning('Relays melden Rate-Limits. Bitte kurz warten oder weniger Relays verwenden.');
-        }
-        throw error;
-      }
+      const result = Array.from(map.values()).sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+      triggerNotificationForWishlist(result);
+      return result;
     },
     staleTime: 1000 * 60 * 5,
     retry: 2,
@@ -212,7 +200,6 @@ export function useWishlist(options?: UseWishlistOptions) {
   const mutationResult = useMutation({
     mutationFn: async (payload: WishlistPayload) => {
       if (!user) throw new Error('Not logged in');
-
       const eventDraft = buildEvent(user.pubkey, payload);
       const signed = await user.signer.signEvent(eventDraft as NostrEvent);
       await nostr.event(signed, { signal: AbortSignal.timeout(5000) });
@@ -225,7 +212,6 @@ export function useWishlist(options?: UseWishlistOptions) {
       queryResult.refetch();
     },
     onError: (error) => {
-      console.error('Wishlist publish failed', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       setLastPublishError(message);
       logRelay(`Publish failed: ${message}`);
@@ -235,33 +221,25 @@ export function useWishlist(options?: UseWishlistOptions) {
   const deleteMutation = useMutation({
     mutationFn: async (itemId: string) => {
       if (!user) throw new Error('Not logged in');
-
       const deleteEvent = {
         kind: 5,
         content: 'Deleted wishlist item',
-        tags: [
-          ['a', `${WISHLIST_KIND}:${user.pubkey}:${itemId}`],
-        ],
+        tags: [['a', `${WISHLIST_KIND}:${user.pubkey}:${itemId}`]],
         created_at: Math.floor(Date.now() / 1000),
         pubkey: user.pubkey,
       };
-
       const signed = await user.signer.signEvent(deleteEvent as NostrEvent);
       await nostr.event(signed, { signal: AbortSignal.timeout(5000) });
       return { itemId, event: signed };
     },
     onMutate: async (itemId: string) => {
       await queryClient.cancelQueries({ queryKey: ['wishlist', user?.pubkey] });
-
       addDeletedId(itemId);
-
       const previousWishlist = queryClient.getQueryData<WishlistItem[]>(['wishlist', user?.pubkey]);
-
       if (previousWishlist) {
         const updated = previousWishlist.filter(item => item.id !== itemId);
         queryClient.setQueryData(['wishlist', user?.pubkey], updated);
       }
-
       return { previousWishlist };
     },
     onSuccess: () => {
@@ -269,16 +247,14 @@ export function useWishlist(options?: UseWishlistOptions) {
       setTimeout(() => queryResult.refetch(), 3000);
     },
     onError: (error, itemId, context) => {
-      console.error('Wishlist delete failed', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       logRelay(`Delete failed: ${message}`);
-
       setDeletedIds(prev => {
         const updated = new Set(prev);
         updated.delete(itemId);
+        persistDeletedIds(updated);
         return updated;
       });
-
       if (context?.previousWishlist) {
         queryClient.setQueryData(['wishlist', user?.pubkey], context.previousWishlist);
       }
@@ -290,16 +266,7 @@ export function useWishlist(options?: UseWishlistOptions) {
     enabled: Boolean(user),
     queryFn: async ({ signal }) => {
       if (!user) return [];
-
-      const filters = [
-        {
-          kinds: [FILTER_EVENT_KIND],
-          authors: [user.pubkey],
-          '#t': [FILTER_EVENT_TAG],
-          limit: 1,
-        },
-      ];
-
+      const filters = [{ kinds: [FILTER_EVENT_KIND], authors: [user.pubkey], '#t': [FILTER_EVENT_TAG], limit: 1 }];
       return enqueueQuery(() => nostr.query(filters, { signal }), logRelay);
     },
     staleTime: 1000 * 60 * 5,
@@ -310,61 +277,19 @@ export function useWishlist(options?: UseWishlistOptions) {
 
   useEffect(() => {
     if (!latestFilterEvent) return;
-
     const ids = parseFilterEventIds(latestFilterEvent);
     lastPublishedIdsRef.current = sortIds(ids);
     setDeletedIds(new Set(ids));
   }, [latestFilterEvent]);
 
-  const filterEventMutation = useMutation({
-    mutationFn: async (ids: string[]) => {
-      if (!user) throw new Error('Not logged in');
-
-      const event = {
-        kind: FILTER_EVENT_KIND,
-        content: JSON.stringify(ids),
-        tags: [
-          ['t', FILTER_EVENT_TAG],
-          ['d', FILTER_EVENT_D_TAG],
-        ],
-        created_at: Math.floor(Date.now() / 1000),
-        pubkey: user.pubkey,
-      };
-
-      const signed = await user.signer.signEvent(event as NostrEvent);
-      await nostr.event(signed, { signal: AbortSignal.timeout(5000) });
-      return ids;
-    },
-    onSuccess: (_, ids) => {
-      lastPublishedIdsRef.current = sortIds(ids);
-      logRelay('Filter list published');
-    },
-    onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      logRelay(`Filter list publish failed: ${message}`);
-    },
-  });
-
   useEffect(() => {
     if (!user) return;
-
     const ids = sortIds(Array.from(deletedIds));
-    if (areSameIdList(ids, lastPublishedIdsRef.current)) {
-      return;
-    }
-
-    if (publishTimerRef.current) {
-      clearTimeout(publishTimerRef.current);
-    }
-
-    publishTimerRef.current = setTimeout(() => {
-      filterEventMutation.mutate(ids);
-    }, 2000);
-
+    if (areSameIdList(ids, lastPublishedIdsRef.current)) return;
+    if (publishTimerRef.current) clearTimeout(publishTimerRef.current);
+    publishTimerRef.current = setTimeout(() => filterEventMutation.mutate(ids), 2000);
     return () => {
-      if (publishTimerRef.current) {
-        clearTimeout(publishTimerRef.current);
-      }
+      if (publishTimerRef.current) clearTimeout(publishTimerRef.current);
     };
   }, [deletedIds, filterEventMutation, user]);
 
@@ -377,12 +302,7 @@ export function useWishlist(options?: UseWishlistOptions) {
   const stats = useMemo(() => {
     const totalTarget = wishlist.reduce((sum, item) => sum + item.targetPriceSats, 0);
     const readyCount = wishlist.filter((item) => (item.currentPriceSats ?? Infinity) <= item.targetPriceSats).length;
-
-    return {
-      count: wishlist.length,
-      readyCount,
-      totalTarget,
-    };
+    return { count: wishlist.length, readyCount, totalTarget };
   }, [wishlist]);
 
   return {
@@ -391,20 +311,21 @@ export function useWishlist(options?: UseWishlistOptions) {
     stats,
     addItem: mutationResult.mutateAsync,
     deleteItem: deleteMutation.mutateAsync,
-    publishStatus: {
-      status: mutationResult.status,
-      error: lastPublishError,
-      lastSuccessAt: lastPublishSuccess,
-    },
-    deleteStatus: {
-      status: deleteMutation.status,
-      error: deleteMutation.error,
-    },
+    publishStatus: { status: mutationResult.status, error: lastPublishError, lastSuccessAt: lastPublishSuccess },
+    deleteStatus: { status: deleteMutation.status, error: deleteMutation.error },
     rateLimitWarning,
     refetch: queryResult.refetch,
     clearDeletedItems: () => {
       localStorage.removeItem(STORAGE_KEY);
       setDeletedIds(new Set());
     },
+    requestNotificationPermission: () => {
+      if (typeof window === 'undefined' || !('Notification' in window)) return;
+      Notification.requestPermission().then(permission => {
+        setNotificationPermission(permission);
+        setNotificationConsent(permission);
+      });
+    },
+    notificationConsent,
   };
 }

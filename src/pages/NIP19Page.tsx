@@ -58,7 +58,7 @@ export function NIP19Page() {
                 <p className="text-sm text-white/50 mt-1">{formatSats(Math.round(targetPriceEUR * 1000))} sats</p>
               </div>
               <div className="bg-[#1c1c24] border border-border rounded-2xl p-4">
-                <p className="text-xs text-white/60 uppercase tracking-widest">Aktueller Shop-Preis</p>
+                <p className="text-xs text-white/60 uppercase tracking-widest">Shoppreis</p>
                 <p className="text-3xl font-bold mt-2">{formatEuros(shopPriceEUR)}</p>
                 <p className="text-sm text-white/50 mt-1">{formatSats(Math.round(shopPriceEUR * 1000))} sats</p>
               </div>
