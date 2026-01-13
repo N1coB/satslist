@@ -19,7 +19,7 @@ export default {
 
   create(context) {
     const filename = context.getFilename();
-    
+
     // Only run this rule on HTML files
     if (!filename.endsWith('.html')) {
       return {};
@@ -29,11 +29,11 @@ export default {
       Program(node) {
         const sourceCode = context.getSourceCode();
         const htmlContent = sourceCode.getText();
-        
+
         // Check for manifest link tag in HTML
         const manifestLinkRegex = /<link[^>]*rel=["']manifest["'][^>]*>/i;
         const manifestMatch = htmlContent.match(manifestLinkRegex);
-        
+
         if (!manifestMatch) {
           context.report({
             node,
@@ -53,11 +53,11 @@ export default {
         }
 
         const manifestPath = hrefMatch[1];
-        
+
         // Resolve the manifest file path relative to the project root
         const htmlDir = path.dirname(filename);
         let resolvedManifestPath;
-        
+
         if (manifestPath.startsWith('/')) {
           // Absolute path - check in public directory first, then project root
           const publicPath = path.resolve(htmlDir, 'public' + manifestPath);
@@ -65,9 +65,11 @@ export default {
           resolvedManifestPath = fs.existsSync(publicPath) ? publicPath : rootPath;
         } else {
           // Relative path
-          resolvedManifestPath = path.resolve(htmlDir, manifestPath);
+          const directPath = path.resolve(htmlDir, manifestPath);
+          const publicPath = path.resolve(htmlDir, 'public', manifestPath);
+          resolvedManifestPath = fs.existsSync(directPath) ? directPath : publicPath;
         }
-        
+
         // Check if the manifest file exists
         if (!fs.existsSync(resolvedManifestPath)) {
           context.report({
