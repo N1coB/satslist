@@ -18,29 +18,6 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { useBitcoinPrice, formatEur } from '@/hooks/useBitcoinPrice';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
-interface AddProductDialogProps {
-  children?: React.ReactNode;
-}
-
-type Step = 'input' | 'loading' | 'confirm' | 'notification';
-
-export function ProductImportDialog({ children }: AddProductDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [step, setStep] = useState<Step>('input');
-  const [productUrl, setProductUrl] = useState('');
-  const [metadata, setMetadata] = useState<ProductMetadata | null>(null);
-  const [targetBtcPrice, setTargetBtcPrice] = useState('');
-
-  const { extractMetadata, isLoading } = useProductMetadata();
-  const { addItem, isSaving } = useWishlist();
-  const { data: btcPrice } = useBitcoinPrice();
-  const { user } = useCurrentUser();
-  const {
-    permission,
-    requestPermission,
-    notifyProductAdded,
-  } = useNotifications();
-
 
 interface AddProductDialogProps {
   children?: React.ReactNode;
